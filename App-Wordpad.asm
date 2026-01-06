@@ -103,6 +103,7 @@
 ;==============================================================================
 
 keymapbld   ;**BOLD
+db 0,0,0,0
 db  32,127,128,129                          ;all
 db 130,131,132,133,134,135,136,137,138, 45
 db 140,141,142,143,144,145,146,147,148,149
@@ -115,6 +116,7 @@ db 200,201,202,203,204,205,206,207,208,209
 db 210,211,212,213,214,215,216,217,218,219
 
 keymapita   ;**ITALICS
+db 0,0,0,0
 db 32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47
 db 220,221,222,223,224,225,226,227,228,229  ;0-9
 db 58,59,60,61,62,63,64
@@ -124,6 +126,7 @@ db 230,231,232,233,234,235,236,237,238,239,240,241,242,243,244,245,246,247,248,2
 db 123,124,125,126
 
 keymapuln   ;**UNDERLINED
+db 0,0,0,0
 db 190,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47
 db "0123456789"
 db 58,59,60,61,62,63,64
@@ -139,7 +142,8 @@ diawin      db 0    ;dialogue window ID
 tmpwin      db -1   ;print window
 windatsup   equ 51
 
-prgprz  call prgpar
+prgprz  call prglng
+        call prgpar
         call cfglod
         call cfgini
         call SySystem_HLPINI
@@ -255,7 +259,7 @@ prgend1 rst #30                     ;wait for death
 ;### PRGPAR -> Search for command line parameter (textfile)
 prgparf db 0                    ;flag, if command line parameter exists
 
-prgpar  ld hl,(App_BegCode)       ;search for command line parameter
+prgpar  ld hl,(App_BegCode)     ;search for command line parameter
         ld de,App_BegCode
         dec h
         add hl,de               ;HL=code area end=path
@@ -276,6 +280,19 @@ prgpar2 ld (hl),0
         ld (prgparf),a
         ldir
 prgpar3 ret
+
+;### PRGLNG -> load language pack
+prglng  ld hl,(App_BegCode)
+        ld de,App_BegCode
+        dec h
+        add hl,de               ;HL=code area end=path
+        ex de,hl
+        ld a,(App_BnkNum)
+        ld c,a
+        ld hl,texts_int
+        ld ix,256*0+9           ;default language=9 (english), pack=0
+        ld iyl,0                ;language-file version 0
+        jp SySystem_LNGLOD
 
 
 ;==============================================================================
@@ -1201,9 +1218,9 @@ cfgwrp2 ld (cfgdatwrp),a
         jp prgprz0
 cfgwrp0 ld a,(cfgdatwrp)
         or a
-        ld a,3
+        ld a,3+32
         jr z,cfgwrp1
-        ld a,1
+        ld a,1+32
 cfgwrp1 ld (prgwinmen3+2),a
         ret
 
@@ -1560,7 +1577,6 @@ prtcod  sub 1
 ;==============================================================================
 
 ;### EDTCHG -> Editor changed
-edtchgm db "Lin Col Siz Mrk "
 edtchgf db 0    ;flag, if changed
 
 edtchg  ld a,1                  ;** Set Change-Flag
@@ -1578,11 +1594,11 @@ edtchg1 ld a,(prgwindat+1)      ;** Update only on view
         call edtchg5
         ld a,(maiwinnum)
         jp SyDesktop_WINSTA
-edtchg5 ld a,29                 ;** Update content
+edtchg5 ld a,248                ;** Update content
         rst #20:dw jmp_keyput
         rst #30
         ld iy,prgwinsta
-        ld hl,edtchgm
+        ld hl,(edtchgm_poi+1)
         ld ix,(txtmulobj+texdatmsg+2)
         inc ix
         call edtchg4
@@ -1711,7 +1727,7 @@ edttim1 ld hl,(txtmulobj+texdatlen)     ;increase length
         ld (txtmulobj+texdatmsg+0),hl   ;update display
         ld hl,0
         ld (txtmulobj+texdatmrk),hl
-        ld a,30
+        ld a,249
         rst #20:dw jmp_keyput
         jp prgprz0
 
@@ -1803,7 +1819,7 @@ fndrdr  call fndrok0
         push hl
         ld hl,0
         ld (txtmulobj+texdatmrk),hl
-        ld a,30
+        ld a,249
         rst #20:dw jmp_keyput
         rst #30
         pop hl
@@ -1878,7 +1894,7 @@ fndfnx2 ld de,(fnddatofn+texdatlen)
         ld a,d:cpl:ld d,a
         inc de
         ld (txtmulobj+texdatmsg+2),de
-        ld a,31
+        ld a,250
         rst #20:dw jmp_keyput
         ret
 
@@ -2145,7 +2161,7 @@ fndgot7 dec bc
         ld (txtmulobj+texdatmsg+0),hl
         ld hl,0
         ld (txtmulobj+texdatmsg+2),hl
-        ld a,31
+        ld a,250
         rst #20:dw jmp_keyput   ;set cursor
         jp prgprz0
 
@@ -2432,6 +2448,19 @@ db #88,#18,#88,#18,#81,#81,#81,#81,#88,#88,#81,#88,#88,#81,#88,#81,#81,#88
 db #81,#11,#81,#11,#11,#11,#11,#18,#11,#81,#18,#88,#88,#11,#18,#11,#11,#88
 
 
+;==============================================================================
+;%%% MULTI LANGUAGE TEXTS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+;==============================================================================
+
+texts_int
+read"App-Wordpad-texts.asm"
+texts_int_end
+
+list
+texts_int_len   equ texts_int_end-texts_int
+nolist
+
+
 ;### STRINGS ##################################################################
 
 docmsk  db "TXT",0
@@ -2442,63 +2471,23 @@ filprtpths  ds 32
 prgwintit   db "untitled - Wordpad",0:ds 12-8
 prgwinsta   ds 4*11
 
-prgtxtinf1  db "Wordpad for SymbOS",0
 prgtxtinf2  db " Version 1.1 (Build "
 read "..\..\..\SRC-Main\build.asm"
-            db "pdt)",0
-prgtxtinf3  db " Copyright <c> 2025 SymbiosiS"
+            db "pdt)"
 prgtxtinf0  db 0
 
-prgtxterra  db "Textbuffer full. Only a part of",0
-prgtxterrb  db "the document has been loaded.",0
-
-prgtxterrc  db "Error while loading file!",0
-
-prgtxterrd  db "Error while saving file!",0
-
-prgtxterre  db "Device full. Only a part of",0
-prgtxterrf  db "the document has been saved.",0
-
-prgtxterrg  db "Printer Daemon not found.",0
-
-prgtxtsav1  db "Save changes?",0
-
-prgtxtoky   db "Ok",0
-prgtxtcnc   db "Cancel",0
-prgtxtfnx   db "Find next",0
-prgtxtfrp   db "Replace",0
-prgtxtfra   db "Replace all",0
-
 ;### FIND AND REPLACE #########################################################
-
-fndwintit   db "Find",0
-repwintit   db "Replace",0
-gotwintit   db "Go to",0
-
-fndwintxt1  db "Find what",0
-fndwintxt2  db "Replace with",0
-fndwintxt3  db "Match case",0
-fndwintxt4  db "Whole word only",0
-fndwintxt5  db "Entire document",0
-fndwintxt6  db "Line",0
-fndwintxt7  db "Column",0
 
 fnddattfn   ds 33
 fnddattrp   ds 33
 gotdattln   db "1":ds 4
 gotdattcl   db "1":ds 5
 
-fndmsgtxt1  db "Text not found!",0
 fndmsgtxt2a db "Replaced "
 fndmsgtxt2b ds 8+5
 fndmsgtxt2c db " times.",0
-fndmsgtxt3a db "Textbuffer full. Couldn't",0
-fndmsgtxt3b db "replace one or more entries.",0
-fndmsgtxt4  db "Invalid number",0
 
 ;### CONFIG ###################################################################
-
-fnttxtdef   db "Default",0
 
 coltxt00    db "00",0
 coltxt01    db "01",0
@@ -2517,31 +2506,16 @@ coltxt13    db "13",0
 coltxt14    db "14",0
 coltxt15    db "15",0
 
-cfgwintit   db "Settings",0
-cfgwintxt0  db "Font type",0
-cfgwintxt1  db "Font colour",0
-cfgwintxt2  db "Options",0
-cfgwintxt3  db "Word wrap at window border",0
-cfgwintxt4  db "Word wrap at",0
-cfgwintxt5  db "px",0
-cfgwintxt6  db "No word wrap",0
-cfgwintxt7  db "Tabstop width",0
-cfgwintxt8  db "chars",0
-cfgwintxt9  db "Pen",0
-cfgwintxta  db "Paper",0
-cfgwintxtb  db "Preview",0
-
 ;### MENU #####################################################################
 
 menicn_null         db 4,8,1:dw $+7,$+4,4:db 5: db #66,#66,#66,#66
 
-prgwinmentx1 db "File",0
-prgwinmen1tx1 db 6,128,-1:dw menicn_filenew+1:      db " New",0
-prgwinmen1tx2 db 6,128,-1:dw menicn_fileopen+1:     db " Open...",0
-prgwinmen1tx3 db 6,128,-1:dw menicn_filesave+1:     db " Save",0
-prgwinmen1tx4 db 6,128,-1:dw menicn_filesaveas+1:   db " Save As...",0
-prgwinmen1tx5 db 6,128,-1:dw menicn_print+1:        db " Print...",0
-prgwinmen1tx6 db 6,128,-1:dw menicn_quit+1:         db " Exit",0
+prgwinmen1tx1 db 6,128,-1:dw menicn_filenew+1:      db 7:dw prgwinmen1tx1_poi:db 0
+prgwinmen1tx2 db 6,128,-1:dw menicn_fileopen+1:     db 7:dw prgwinmen1tx2_poi:db 0
+prgwinmen1tx3 db 6,128,-1:dw menicn_filesave+1:     db 7:dw prgwinmen1tx3_poi:db 0
+prgwinmen1tx4 db 6,128,-1:dw menicn_filesaveas+1:   db 7:dw prgwinmen1tx4_poi:db 0
+prgwinmen1tx5 db 6,128,-1:dw menicn_print+1:        db 7:dw prgwinmen1tx5_poi:db 0
+prgwinmen1tx6 db 6,128,-1:dw menicn_quit+1:         db 7:dw prgwinmen1tx6_poi:db 0
 
 menicn_filenew      db 4,8,7:dw $+7,$+4,28:db 5: db #61,#11,#11,#66, #61,#88,#81,#16, #61,#88,#88,#16, #61,#88,#88,#16, #61,#88,#88,#16, #61,#88,#88,#16, #61,#11,#11,#16
 menicn_fileopen     db 4,8,7:dw $+7,$+4,28:db 5: db #61,#16,#66,#66, #18,#81,#16,#66, #18,#88,#77,#77, #18,#87,#22,#27, #18,#72,#22,#76, #17,#22,#27,#66, #77,#77,#76,#66
@@ -2550,17 +2524,16 @@ menicn_filesaveas   db 4,8,7:dw $+7,$+4,28:db 5: db #66,#11,#11,#16, #66,#18,#88
 menicn_print        db 4,8,7:dw $+7,$+4,28:db 5: db #66,#61,#11,#11, #66,#18,#d8,#16, #61,#8d,#81,#66, #11,#11,#11,#16, #1a,#aa,#0a,#76, #1a,#9a,#9a,#76, #67,#77,#77,#66
 menicn_quit         db 4,8,7:dw $+7,$+4,28:db 5: db #11,#16,#16,#66, #14,#46,#11,#66, #14,#11,#1e,#16, #14,#1e,#ee,#e1, #14,#11,#1e,#16, #14,#46,#11,#66, #11,#16,#16,#66
 
-prgwinmentx2 db "Edit",0
-prgwinmen2tx1 db 6,128,-1:dw menicn_cut+1:          db " Cut",0
-prgwinmen2tx2 db 6,128,-1:dw menicn_copy+1:         db " Copy",0
-prgwinmen2tx3 db 6,128,-1:dw menicn_paste+1:        db " Paste",0
-prgwinmen2tx4 db 6,128,-1:dw menicn_delete+1:       db " Delete",0
-prgwinmen2tx5 db 6,128,-1:dw menicn_find+1:         db " Find...",0
-prgwinmen2tx6 db 6,128,-1:dw menicn_findagain+1:    db " Find Again",0
-prgwinmen2tx7 db 6,128,-1:dw menicn_replace+1:      db " Replace...",0
-prgwinmen2tx8 db 6,128,-1:dw menicn_goto+1:         db " Go To...",0
-prgwinmen2tx9 db 6,128,-1:dw menicn_textall+1:      db " Select All",0
-prgwinmen2txa db 6,128,-1:dw menicn_datetime+1:     db " Time/Date",0
+prgwinmen2tx1 db 6,128,-1:dw menicn_cut+1:          db 7:dw prgwinmen2tx1_poi:db 0
+prgwinmen2tx2 db 6,128,-1:dw menicn_copy+1:         db 7:dw prgwinmen2tx2_poi:db 0
+prgwinmen2tx3 db 6,128,-1:dw menicn_paste+1:        db 7:dw prgwinmen2tx3_poi:db 0
+prgwinmen2tx4 db 6,128,-1:dw menicn_delete+1:       db 7:dw prgwinmen2tx4_poi:db 0
+prgwinmen2tx5 db 6,128,-1:dw menicn_find+1:         db 7:dw prgwinmen2tx5_poi:db 0
+prgwinmen2tx6 db 6,128,-1:dw menicn_findagain+1:    db 7:dw prgwinmen2tx6_poi:db 0
+prgwinmen2tx7 db 6,128,-1:dw menicn_replace+1:      db 7:dw prgwinmen2tx7_poi:db 0
+prgwinmen2tx8 db 6,128,-1:dw menicn_goto+1:         db 7:dw prgwinmen2tx8_poi:db 0
+prgwinmen2tx9 db 6,128,-1:dw menicn_textall+1:      db 7:dw prgwinmen2tx9_poi:db 0
+prgwinmen2txa db 6,128,-1:dw menicn_datetime+1:     db 7:dw prgwinmen2txa_poi:db 0
 
 menicn_cut          db 4,8,7:dw $+7,$+4,28:db 5: db #61,#a6,#a1,#66, #61,#a6,#a1,#66, #66,#16,#16,#66, #66,#61,#66,#66, #66,#71,#76,#66, #67,#a7,#a7,#66, #67,#76,#77,#66
 menicn_copy         db 4,8,7:dw $+7,$+4,28:db 5: db #55,#55,#56,#66, #58,#88,#56,#66, #58,#88,#57,#77, #58,#88,#50,#07, #55,#55,#50,#07, #66,#67,#00,#07, #66,#67,#77,#77
@@ -2573,21 +2546,17 @@ menicn_goto         db 4,8,7:dw $+7,$+4,28:db 5: db #66,#66,#66,#f6, #ff,#ff,#ff
 menicn_textall      db 4,8,7:dw $+7,$+4,28:db 5: db #ff,#ff,#ff,#ff, #88,#88,#88,#86, #ff,#ff,#ff,#f6, #88,#88,#86,#66, #ff,#ff,#f6,#66, #88,#88,#88,#66, #ff,#ff,#ff,#66
 menicn_datetime     db 4,8,7:dw $+7,$+4,28:db 5: db #66,#77,#77,#66, #67,#8a,#18,#76, #78,#88,#18,#87, #7a,#81,#88,#a7, #78,#18,#88,#87, #67,#88,#a8,#76, #66,#77,#77,#66
 
-prgwinmentx3 db "Format",0
-prgwinmen3tx1 db 6,128,-1:dw menicn_null+1:         db " Auto word wrap",0
-prgwinmen3tx2 db 6,128,-1:dw menicn_settings+1:     db " Settings...",0
+prgwinmen3tx1 db 6,128,-1:dw menicn_null+1:         db 7:dw prgwinmen3tx1_poi:db 0
+prgwinmen3tx2 db 6,128,-1:dw menicn_settings+1:     db 7:dw prgwinmen3tx2_poi:db 0
 
-;     _worwrap
+;     _wordwrap
 menicn_settings     db 4,8,7:dw $+7,$+4,28:db 5: db #66,#6c,#66,#66, #6c,#6c,#6c,#66, #6f,#cd,#cf,#66, #cc,#c1,#cc,#c6, #ff,#cc,#cf,#f6, #6c,#fc,#fc,#66, #6f,#6c,#6f,#66
 
-prgwinmentx4 db "View",0
-prgwinmen4tx1 db 6,128,-1:dw menicn_null+1:         db " Status bar",0
+prgwinmen4tx1 db 6,128,-1:dw menicn_null+1:         db 7:dw prgwinmen4tx1_poi:db 0
 
 ;     _viewstatus
-
-prgwinmentx5 db "?",0
-prgwinmen5tx1 db 6,128,-1:dw menicn_help+1:         db " Index",0
-prgwinmen5tx2 db 6,128,-1:dw menicn_about+1:        db " About Wordpad...",0
+prgwinmen5tx1 db 6,128,-1:dw menicn_help+1:         db 7:dw prgwinmen5tx1_poi:db 0
+prgwinmen5tx2 db 6,128,-1:dw menicn_about+1:        db 7:dw prgwinmen5tx2_poi:db 0
 
 menicn_help         db 4,8,7:dw $+7,$+4,28:db 5: db #66,#1f,#f1,#66, #61,#fc,#cf,#16, #1f,#ff,#fc,#f1, #ff,#fc,#cc,#f1, #ff,#ff,#ff,#18, #1f,#cf,#f1,#81, #61,#ff,#18,#16
 menicn_about        db 4,8,7:dw $+7,$+4,28:db 5: db #66,#10,#07,#66, #66,#10,#07,#66, #66,#66,#66,#66, #61,#00,#07,#66, #66,#10,#07,#66, #66,#10,#07,#66, #61,#00,#00,#76
@@ -2640,8 +2609,8 @@ dw     00,255*256+32,cfgwininp1, 73, 79, 26,12,0        ;12=Input       "Word wr
 dw     00,255*256+ 1,cfgwindsc4,101, 81, 32, 8,0        ;13=Description "px"
 dw     00,255*256+18,cfgwinrad2, 08, 92, 64, 8,0        ;14=Radiobox    "No word wrap"
 dw     00,255*256+ 1,cfgwindsc3, 08,106, 32, 8,0        ;15=Description "Tab stop width"
-dw     00,255*256+32,cfgwininp2, 68,104, 16,12,0        ;16=Input       "Tab stop width"
-dw     00,255*256+ 1,cfgwindsc5, 86,106, 32, 8,0        ;17=Description "chars"
+dw     00,255*256+32,cfgwininp2, 73,104, 16,12,0        ;16=Input       "Tab stop width"
+dw     00,255*256+ 1,cfgwindsc5, 91,106, 32, 8,0        ;17=Description "chars"
 dw cfgoky,255*256+16,prgtxtoky,  59,123, 48,12,0        ;18="Ok"    -Button
 dw diacnc,255*256+16,prgtxtcnc, 109,123, 48,12,0        ;19="Cancel"-Button
 
@@ -2798,12 +2767,12 @@ prgwindat dw #7f01,3,50,20,200,106,0,0,200,106,100,50,10000,10000,prgicnsml,prgw
 prgwindat0 dw prgwinsta,prgwinmen,prgwingrp,prgtolgrp,17:ds 136+14
 
 prgwinmen  dw  5, 1+4,prgwinmentx1,prgwinmen1,0, 1+4,prgwinmentx2,prgwinmen2,0, 1+4,prgwinmentx3,prgwinmen3,0, 1+4,prgwinmentx4,prgwinmen4,0, 1+4,prgwinmentx5,prgwinmen5,0
-prgwinmen1 dw  8, 17,prgwinmen1tx1,filnew,0, 17,prgwinmen1tx2,filopn,0, 17,prgwinmen1tx3,filsav,0, 17,prgwinmen1tx4,filsas,0, 1+8,0,0,0, 17,prgwinmen1tx5,filprt,0, 1+8,0,0,0, 17,prgwinmen1tx6,prgend0,0
-prgwinmen2 dw 12, 17,prgwinmen2tx1,edtcut,0, 17,prgwinmen2tx2,edtcop,0, 17,prgwinmen2tx3,edtpas,0, 17,prgwinmen2tx4,edtdel,0, 1+8,0,0,0, 17,prgwinmen2tx5,fndfnd,0
-           dw     17,prgwinmen2tx6,fndfnx,0, 17,prgwinmen2tx7,fndrep,0, 17,prgwinmen2tx8,edtgot,0, 1+8,0,0,0, 17,prgwinmen2tx9,edtsal,0, 17,prgwinmen2txa,edttim,0
-prgwinmen3 dw  2, 17,prgwinmen3tx1,cfgwrp,0, 17,prgwinmen3tx2,cfgopn,0
-prgwinmen4 dw  1, 17,prgwinmen4tx1,cfgbar,0
-prgwinmen5 dw  3, 17,prgwinmen5tx1,prghlp,0, 1+8,0,0,0, 17,prgwinmen5tx2,prginf,0
+prgwinmen1 dw  8, 33,prgwinmen1tx1,filnew,0, 33,prgwinmen1tx2,filopn,0, 33,prgwinmen1tx3,filsav,0, 33,prgwinmen1tx4,filsas,0, 1+8,0,0,0, 33,prgwinmen1tx5,filprt,0, 1+8,0,0,0, 33,prgwinmen1tx6,prgend0,0
+prgwinmen2 dw 12, 33,prgwinmen2tx1,edtcut,0, 33,prgwinmen2tx2,edtcop,0, 33,prgwinmen2tx3,edtpas,0, 33,prgwinmen2tx4,edtdel,0, 1+8,0,0,0, 33,prgwinmen2tx5,fndfnd,0
+           dw     33,prgwinmen2tx6,fndfnx,0, 33,prgwinmen2tx7,fndrep,0, 33,prgwinmen2tx8,edtgot,0, 1+8,0,0,0, 33,prgwinmen2tx9,edtsal,0, 33,prgwinmen2txa,edttim,0
+prgwinmen3 dw  2, 33,prgwinmen3tx1,cfgwrp,0, 33,prgwinmen3tx2,cfgopn,0
+prgwinmen4 dw  1, 33,prgwinmen4tx1,cfgbar,0
+prgwinmen5 dw  3, 33,prgwinmen5tx1,prghlp,0, 1+8,0,0,0, 33,prgwinmen5tx2,prginf,0
 
 prgtolgrp db 13,0:dw prgtolrec,0,0,256*0+0,0,0,2
 prgtolrec

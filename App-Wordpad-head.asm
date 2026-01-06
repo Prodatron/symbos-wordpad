@@ -64,7 +64,7 @@ prgmemtab   db "SymExe10"           ;SymbOS-EXE-identifier              POST tab
             dw txtbufmax+4080+2     ;additional data memory (temp text + actual font)
             dw txtlinmax*2          ;additional transfer memory
             ds 26                   ;*reserviert*
-            db 0,4                  ;required OS version (4.0)
+            db 1,4                  ;required OS version (4.1)
 
 prgicnsml   db 2,8,8
             db #ff,#a8,#00,#61,#ee,#a5,#10,#29,#b8,#e1,#43,#2d,#e0,#70,#07,#03
@@ -80,7 +80,8 @@ use_SySystem_PRGEND     equ 1   ;Stops an application and frees its resources
 use_SySystem_PRGSRV     equ 0   ;Manages shared services or finds applications
 use_SySystem_SYSWRN     equ 1   ;Opens an info, warning or confirm box
 use_SySystem_SELOPN     equ 1   ;Opens the file selection dialogue
-use_SySystem_HLPOPN	    equ 1   ;HLP file handling
+use_SySystem_HLPOPN     equ 1   ;HLP file handling
+use_SySystem_LNGLOD     equ 1   ;Loads a text pack from a language file
 
 ;*** DESKTOP MANAGER LIBRARY USAGE
 use_SyDesktop_WINOPN    equ 1   ;Opens a new window

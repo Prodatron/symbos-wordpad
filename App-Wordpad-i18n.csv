@@ -1,0 +1,72 @@
+labels,ENG,DEU,NLD,JPN
+### pack0,70,1239
+prgtxtoky,Ok,Ok,Ok,オーケー
+prgtxtcnc,Cancel,Abbruch,Annuleren,キャンセル
+prgtxtfnx,Find next,Suchen,Volgende zoeken,ファインド ネクスト
+prgtxtfrp,Replace,Ersetzen,Vervangen,リプレイス
+prgtxtfra,Replace all,Alle ersetz.,Alles vervangen,リプレイス オール
+prgtxtinf1,Wordpad for SymbOS,Wordpad für SymbOS,Wordpad voor SymbOS,ワードパッド for SymbOS
+prgtxtinf3, Copyright <c> 2025 SymbiosiS, Copyright <c> 2025 SymbiosiS,Copyright <c> 2025 SymbiosiS,コピーライト <c> ２０２５ SymbiosiS
+_edtchgm,Lin Col Siz Mrk ,Zei Spa Grö Mrk ,Reg Kol Gro Mkr,リン コル シズ マーク
+prgtxterra,Textbuffer full. Only a part of,Textspeicher voll. Nur ein,Tekstbuffer vol. Slechts een deel van,テキストバッファー が いっぱい です。
+prgtxterrb,the document has been loaded.,Teil konnte geladen werden.,document geladen.,ドキュメント の いちぶ だけ が ロード されました。
+prgtxterrc,Error while loading file!,Fehler beim Laden!,Fout bij laden van bestand!,ファイル ロード エラー！
+prgtxterrd,Error while saving file!,Fehler beim Speichern!,Fout bij opslaan van bestand!,ファイル セーブ エラー！
+prgtxterre,Device full. Only a part of,Datenträger voll. Nur ein Teil,Apparaat vol.Slechts een deel van,デバイス が いっぱい です。
+prgtxterrf,the document has been saved.,konnte gespeichert werden.,document opgeslagen.,ドキュメント の いちぶ だけ が セーブ されました。
+prgtxterrg,Printer Daemon not found.,Kein Printer Daemon.,Printer Daemon niet gevonden.,プリンター デーモン が みつかりません。
+prgtxtsav1,Save changes?,Änderungen speichern?,Wijzigingen opslaan?,ヘンこう を セーブ しますか？
+fnttxtdef,Default,Standard,Standaard,デフォルト
+cfgwintit,Settings,Einstellungen,Instellingen,セッティング
+cfgwintxt0,Font type,Schriftart,Lettertype,フォント タイプ
+cfgwintxt1,Font colour,Farben,Letterkleur,フォント カラー
+cfgwintxt2,Options,Optionen,Opties,オプション
+cfgwintxt3,Word wrap at window border,Umbruch am Fensterende,Woordafbreking bij vensterrand,ウィンドウ ボーダー で ワードラップ
+cfgwintxt4,Word wrap at,Umbruch bei,Woordafbreking bij,ワードラップ する
+cfgwintxt5,px,px,px,ピーエックス
+cfgwintxt6,No word wrap,Kein Umbruch,Geen woordafbreking,ワードラップ なし
+cfgwintxt7,Tabstop width,Tabstop Breite,Tabstopbreedte,タブストップ はば
+cfgwintxt8,chars,Zeichen,tekens,キャラクター
+cfgwintxt9,Pen,Schrift,Pen,ペン
+cfgwintxta,Paper,Hinterg.,Papier,ペーパー
+cfgwintxtb,Preview,Vorschau,Voorbeeld,プレビュー
+fndwintit,Find,Suchen,Zoeken,ファインド
+repwintit,Replace,Ersetzen,Vervangen,リプレイス
+gotwintit,Go to,Gehe zu,Ga naar,ゴートゥー
+fndwintxt1,Find what,Suchtext,Zoekterm,なに を ファインド
+fndwintxt2,Replace with,Ersetze mit,Vervangen door,なに で リプレイス
+fndwintxt3,Match case,Groß/Klein,Hoofdlettergevoelig,ケース を マッチ
+fndwintxt4,Whole word only,Nur ganze Wörter,Alleen hele woorden,ワード ぜんたい のみ
+fndwintxt5,Entire document,Alle ab Anfang,Gehele document,ドキュメント ぜんたい
+fndwintxt6,Line,Zeile,Regel,ライン
+fndwintxt7,Column,Spalte,Kolom,カラム
+fndmsgtxt1,Text not found!,Text nicht gefunden!,Tekst niet gevonden!,テキスト が みつかりません！
+fndmsgtxt3a,Textbuffer full. Couldn't,Speicher voll. Nicht alles,Tekstbuffer vol. Kon niet,テキストバッファー が いっぱい
+fndmsgtxt3b,replace one or more entries.,konnte ersetzt werden.,één of meer items vervangen.,で、いくつか の エントリー を リプレイス できません。
+fndmsgtxt4,Invalid number,Ungültige Nummer,Ongeldig getal,ムこう な ナンバー
+prgwinmentx1,File,Datei,Bestand,ファイル
+prgwinmen1tx1, New, Neu, Nieuwe, ニュー
+prgwinmen1tx2, Open..., Öffnen..., Openen..., オープン...
+prgwinmen1tx3, Save, Speichern, Opslaan, セーブ
+prgwinmen1tx4, Save As..., Speichern unter..., Opslaan als..., セーブ アズ...
+prgwinmen1tx5, Print..., Drucken..., Afdrukken..., プリント...
+prgwinmen1tx6, Exit, Beenden, Afsluiten, イグジット
+prgwinmentx2,Edit,Bearbeiten,Bewerken, エディット
+prgwinmen2tx1, Cut, Ausschneiden, Knippen, カット
+prgwinmen2tx2, Copy, Kopieren, Kopiëren, コピー
+prgwinmen2tx3, Paste, Einfügen, Plakken, ペースト
+prgwinmen2tx4, Delete, Löschen, Verwijderen, デリート
+prgwinmen2tx5, Find..., Suchen..., Zoeken..., ファインド...
+prgwinmen2tx6, Find Again, Weitersuchen, Opnieuw zoeken, ファインド アゲイン
+prgwinmen2tx7, Replace..., Ersetzen..., Vervangen..., リプレイス...
+prgwinmen2tx8, Go To..., Gehe zu..., Ga naar..., ゴートゥー...
+prgwinmen2tx9, Select All, Alles markieren, Alles selecteren, セレクト オール
+prgwinmen2txa, Time/Date, Zeit/Datum, Tijd/datum, タイム／デイト
+prgwinmentx3,Format,Format,Opmaak, フォーマット
+prgwinmen3tx1, Auto word wrap, Automatischer Umbruch, Automatische woordafbreking, オート ワードラップ
+prgwinmen3tx2, Settings..., Einstellungen..., Instellingen..., セッティング...
+prgwinmentx4,View,Ansicht,Beeld,ビュー
+prgwinmen4tx1, Status bar, Statusleiste, Statusbalk, ステータス バー
+prgwinmentx5,?,?,?,クエスチョン
+prgwinmen5tx1, Index, Hilfethemen, Index, インデックス
+prgwinmen5tx2, About Wordpad..., Über Wordpad..., Over Wordpad..., ワードパッド に ついて...
