@@ -12,6 +12,7 @@
 ;misc
 prgtxtoky   db 1:dw prgtxtoky_eng
 prgtxtcnc   db 1:dw prgtxtcnc_eng
+prgtxtbrw   db 1:dw prgtxtbrw_eng
 prgtxtfnx   db 1:dw prgtxtfnx_eng
 prgtxtfrp   db 1:dw prgtxtfrp_eng
 prgtxtfra   db 1:dw prgtxtfra_eng
@@ -24,6 +25,7 @@ prgtxterra   db 1:dw prgtxterra_eng
 prgtxterrb   db 1:dw prgtxterrb_eng
 prgtxterrc   db 1:dw prgtxterrc_eng
 prgtxterrd   db 1:dw prgtxterrd_eng
+prgtxterrh   db 1:dw prgtxterrh_eng
 prgtxterre   db 1:dw prgtxterre_eng
 prgtxterrf   db 1:dw prgtxterrf_eng
 prgtxterrg   db 1:dw prgtxterrg_eng
@@ -31,6 +33,10 @@ prgtxtsav1   db 1:dw prgtxtsav1_eng
 
 ;config
 fnttxtdef   db 1:dw fnttxtdef_eng
+fnttxtext   db 1:dw fnttxtext_eng
+txtcfgfnt   db 1:dw txtcfgfnt_eng
+txtcfgopt   db 1:dw txtcfgopt_eng
+
 cfgwintit   db 1:dw cfgwintit_eng
 cfgwintxt0   db 1:dw cfgwintxt0_eng
 cfgwintxt1   db 1:dw cfgwintxt1_eng
@@ -44,6 +50,9 @@ cfgwintxt8   db 1:dw cfgwintxt8_eng
 cfgwintxt9   db 1:dw cfgwintxt9_eng
 cfgwintxta   db 1:dw cfgwintxta_eng
 cfgwintxtb   db 1:dw cfgwintxtb_eng
+cfgwintxt10  db 1:dw cfgwintxt10_eng
+cfgwintxt11  db 1:dw cfgwintxt11_eng
+cfgwintxt12  db 1:dw cfgwintxt11_eng
 
 ;find and replace
 fndwintit   db 1:dw fndwintit_eng
@@ -62,6 +71,10 @@ fndmsgtxt1   db 1:dw fndmsgtxt1_eng
 fndmsgtxt3a   db 1:dw fndmsgtxt3a_eng
 fndmsgtxt3b   db 1:dw fndmsgtxt3b_eng
 fndmsgtxt4   db 1:dw fndmsgtxt4_eng
+
+fndmsgtxt2a  db 1:dw fndmsgtxt2a_eng
+fndmsgtxt2b  db 1:dw fndmsgtxt2b_eng
+fndmsgtxt2c  db 1:dw fndmsgtxt2c_eng
 
 ;menus
 prgwinmentx1        db 1:dw prgwinmentx1_eng
@@ -87,6 +100,8 @@ prgwinmen3tx1_poi   db 1:dw prgwinmen3tx1_eng
 prgwinmen3tx2_poi   db 1:dw prgwinmen3tx2_eng
 prgwinmentx4        db 1:dw prgwinmentx4_eng
 prgwinmen4tx1_poi   db 1:dw prgwinmen4tx1_eng
+prgwinmen4tx2_poi   db 1:dw prgwinmen4tx2_eng
+prgwinmen4tx3_poi   db 1:dw prgwinmen4tx3_eng
 prgwinmentx5        db 1:dw prgwinmentx5_eng
 prgwinmen5tx1_poi   db 1:dw prgwinmen5tx1_eng
 prgwinmen5tx2_poi   db 1:dw prgwinmen5tx2_eng
@@ -96,6 +111,7 @@ prgwinmen5tx2_poi   db 1:dw prgwinmen5tx2_eng
 ;misc
 prgtxtoky_eng   db "Ok",0
 prgtxtcnc_eng   db "Cancel",0
+prgtxtbrw_eng   db "Browse...",0
 prgtxtfnx_eng   db "Find next",0
 prgtxtfrp_eng   db "Replace",0
 prgtxtfra_eng   db "Replace all",0
@@ -111,6 +127,7 @@ prgtxterrb_eng   db "the document has been loaded.",0
 
 prgtxterrc_eng   db "Error while loading file!",0
 prgtxterrd_eng   db "Error while saving file!",0
+prgtxterrh_eng   db "Error while loading font!",0
 
 prgtxterre_eng   db "Device full. Only a part of",0
 prgtxterrf_eng   db "the document has been saved.",0
@@ -120,11 +137,14 @@ prgtxtsav1_eng   db "Save changes?",0
 
 ;config
 fnttxtdef_eng   db "Default",0
+fnttxtext_eng   db "[Loaded]",0
+txtcfgfnt_eng   db "Font",0
+txtcfgopt_eng   db "Options",0
 
 cfgwintit_eng   db "Settings",0
 cfgwintxt0_eng   db "Font type",0
 cfgwintxt1_eng   db "Font colour",0
-cfgwintxt2_eng   db "Options",0
+cfgwintxt2_eng   db "Word wrap",0
 cfgwintxt3_eng   db "Word wrap at window border",0
 cfgwintxt4_eng   db "Word wrap at",0
 cfgwintxt5_eng   db "px",0
@@ -134,6 +154,9 @@ cfgwintxt8_eng   db "chars",0
 cfgwintxt9_eng   db "Pen",0
 cfgwintxta_eng   db "Paper",0
 cfgwintxtb_eng   db "Preview",0
+cfgwintxt10_eng  db "Load from",0
+cfgwintxt11_eng  db "Fontfile",0
+cfgwintxt12_eng  db "Miscellaneous",0
 
 ;find and replace
 fndwintit_eng   db "Find",0
@@ -152,6 +175,10 @@ fndmsgtxt1_eng   db "Text not found!",0
 fndmsgtxt3a_eng   db "Textbuffer full. Couldn't",0
 fndmsgtxt3b_eng   db "replace one or more entries.",0
 fndmsgtxt4_eng   db "Invalid number",0
+
+fndmsgtxt2a_eng     db "Replaced "
+fndmsgtxt2b_eng     db "????? times.",0
+fndmsgtxt2c_eng     db " times.",0
 
 ;menus
 prgwinmentx1_eng    db "File",0
@@ -179,11 +206,13 @@ prgwinmen3tx1_eng   db " Auto word wrap",0
 prgwinmen3tx2_eng   db " Settings...",0
 
 prgwinmentx4_eng    db "View",0
-prgwinmen4tx1_eng   db " Status bar",0
+prgwinmen4tx1_eng   db " Tool bar",0
+prgwinmen4tx2_eng   db " Status bar",0
+prgwinmen4tx3_eng   db " Line numbers",0
 
 prgwinmentx5_eng    db "?",0
 prgwinmen5tx1_eng   db " Index",0
 prgwinmen5tx2_eng   db " About Wordpad...",0
 
 ;### RESERVE
-ds 160
+ds 200

@@ -1,6 +1,6 @@
 {
     "asm": {
-        "0": "App-Wordpad-Texts.asm"
+        "0": "App-Wordpad-i18n.asm"
     },
     "csv": "App-Wordpad-i18n.csv",
     "lng": "f:/symbos/apps/wordpad.lng"

@@ -11,7 +11,7 @@ App_BegCode
 
 ;### APPLICATION HEADER #######################################################
 
-txtbufmax   equ 16384-1-4080-2  ;16k - 0terminator - fontmax(255x16+2)
+txtbufmax   equ 16384-1         ;16k - 0terminator
 txtlinmax   equ 1000
 
 ;header structure
@@ -61,7 +61,7 @@ App_BnkNum  db 0                    ;*reserved*                         POST ban
             ds 5                    ;*reserved*
 prgmemtab   db "SymExe10"           ;SymbOS-EXE-identifier              POST table reserved memory areas
             dw prtbuflen            ;additional code memory (print buffer)
-            dw txtbufmax+4080+2     ;additional data memory (temp text + actual font)
+            dw txtbufmax            ;additional data memory (text buffer, 0terminator is single byte in data area)
             dw txtlinmax*2          ;additional transfer memory
             ds 26                   ;*reserviert*
             db 1,4                  ;required OS version (4.1)
@@ -86,7 +86,7 @@ use_SySystem_LNGLOD     equ 1   ;Loads a text pack from a language file
 ;*** DESKTOP MANAGER LIBRARY USAGE
 use_SyDesktop_WINOPN    equ 1   ;Opens a new window
 use_SyDesktop_WINMEN    equ 0   ;Redraws the menu bar of a window
-use_SyDesktop_WININH    equ 0   ;Redraws the content of a window
+use_SyDesktop_WININH    equ 1   ;Redraws the content of a window
 use_SyDesktop_WINTOL    equ 1   ;Redraws the content of the window toolbar
 use_SyDesktop_WINTIT    equ 1   ;Redraws the title bar of a window
 use_SyDesktop_WINSTA    equ 1   ;Redraws the status bar of a window

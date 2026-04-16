@@ -2,48 +2,95 @@
 ;@                                                                            @
 ;@                               W o r d p a d                                @
 ;@                                                                            @
-;@             (c) 2012-2023 by Prodatron / SymbiosiS (Jörn Mika)             @
+;@             (c) 2012-2026 by Prodatron / SymbiosiS (Jörn Mika)             @
 ;@                                                                            @
 ;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 ;Todo
+;- show line numbers
+;  - scroll
+;  - re-generate
+
+;WordPad 2.0
 ;- unlimited memory
 
-;- clipboard with own type
-;- search/replace (?!)
-
-
-;- find nach doc-ende von vorne anfangen bis curpos
-;- commands 29-31 focus setzen!
+;- clipboard with own type for wysiwyg
+;- replace -> if document end, continue at start until curpos (adjust with repl-difs)
+;- commands 248-250 set focus
 
 ;Bugs
 ;- paste doesn't refresh screenparts
 
 
-;--- PROGRAM-ROUTINES ---------------------------------------------------------
+;--- CODE AREA ----------------------------------------------------------------
+;### PRGPRZ -> Application process
 ;### PRGKEY -> Check key
+;### PRGHLP -> show help
 ;### PRGINF -> show info-box
 ;### PRGEND -> quit application
 ;### PRGPAR -> Search for command line parameter (textfile)
+;### PRGLNG -> load language pack
 
 ;--- SUB-ROUTINES -------------------------------------------------------------
+;### WINTAB -> tab clicked
+;### DIAOPN -> Open dialogue
 ;### DIACNC -> Cancel dialogue
 ;### MSGGET -> check for message for application
+;### CLCM16 -> Multiplies two 16-bit values
+;### CLCD16 -> Divides two 16-bit values
 ;### CLCDEZ -> Converts byte into 2 decimal digits
 ;### CLCNUM -> Converts 16bit number into ASCII string (terminated by 0)
 ;### CLCR16 -> Converts string into 16bit number
+
+;--- DROPDOWN ROUTINES --------------------------------------------------------
+;### DRPMRK -> place marker in font dropdown
+;### DRPFNT -> opens font dropdown
+;### DRPCLK -> dropdown entry has been clicked
+;### DRPCLO -> close dropdown window
+
+;--- FONT STYLE ROUTINES ------------------------------------------------------
+;### STYFNT -> select font
+;### STYBLD/STYITA/STYULN -> style button clicked
+;### STYMRK -> style button clicked
+;### STYCHR -> check the style of a WYSIWYG char
+;### STYCUR -> check font style under cursor if wysiwyg, and set button if changed
+;### STYRFR -> reformats the selected text with new font style
+;### STYCVA -> convert all text to plain ASCII (cut <32, >126)
+;### STYCVN -> convert WYSIWYG text to ASCII
+;### STY2AS -> convert WYSIWYG char to ASCII
+;### STY2NR -> convert normal/bold/italics/underlined style to normal style
+;### STY2WY -> convert ASCII char to WYSIWYG char
+
+;--- LINENUMBER-ROUTINES ------------------------------------------------------
+;### LINACT -> switches line numbers on
+;### LINOFF -> switches line numbers off
+;### LINMEM -> reserve memory for line numbers
+;### LINSWT -> switches line numbers on/off
+;### LINDIG -> get number of necessary digits for line numbers
+;### LINPRE -> prepares controls for line numbers
+;### LINGEN -> generates lines numbers
 
 ;--- CONFIG-ROUTINES ----------------------------------------------------------
 ;### CFGGET -> Generates config path
 ;### CFGLOD -> Loads config
 ;### CFGINI -> Initialize config
-;### CFGFNT -> Loads font
 ;### CFGSAV -> Save config
 ;### CFGOPN -> Open config-dialogue
 ;### CFGCOL -> Updates colour preview
+;### CFGTAB -> preferences tab pressed
+;### CFGFBR -> Browse font
 ;### CFGOKY -> Close config-dialogue and save config
+;### CFGCNC -> Cancel config window
 ;### CFGWRP -> Switch between "wrap at window border" and "no wrap"
 ;### CFGBAR -> Switches the status bar on/off
+
+;--- FONT-ROUTINES ------------------------------------------------------------
+;### FNTINF -> load font collection info and prepare lists and drowpdown menu
+;### FNTLOD -> Loads font
+;### FNTMEM -> calculates and reserves bigfont memory for fontfile
+;### FNTCNV -> load any kind of font (small/medium/big) and stores it as bigfont
+;### FNTCHU -> copy one converted font chunk to destination
+;### FNTSEL -> show selected font
 
 ;--- FILE-ROUTINES ------------------------------------------------------------
 ;### FILMOD -> Ask for file-saving, if text has been modified
@@ -54,6 +101,7 @@
 ;### FILLOD -> load selected textfile
 ;### FILSTO -> save actual textfile
 ;### FILTIT -> Refreshes window title with filename
+;### FILPRT -> prints file
 
 ;--- EDIT-ROUTINES ------------------------------------------------------------
 ;### EDTCHG -> Editor changed
@@ -86,21 +134,42 @@
 ;### DOCINI -> initialise loaded document
 ;### DOCNEW -> clears and initialise document
 ;### DOCRFS -> refresh document display
+;### DOCWIN -> refresh whole window (for line numbers, as calculation rules changed)
 
-;--- FONT STYLE ROUTINES ------------------------------------------------------
-;### STYCUR -> check font style under cursor if wysiwyg, and set button if changed
-;### STYRFR -> reformats the selected text with new font style
-;### STYCVW -> convert all text to wysiwyg (cut <32, >126)
-;### STYCVN -> convert all text to normal font
-;### STY2AS -> convert WYSIWYG char to ASCII char
-;### STY2NR -> convert normal/bold/italics/underlined style to normal style
-;### STY2WY -> convert ASCII char to WYSIWYG char
+;--- DATA AREA ----------------------------------------------------------------
 
+;--- TRANSFER AREA ------------------------------------------------------------
+;### PRGPRZS -> Stack for application process
+;### TOOLBAR ICON BITMAPS #####################################################
+;### FONT DATA ################################################################
+
+;%%% MULTI LANGUAGE TEXTS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+;### STRINGS ##################################################################
+;### FIND AND REPLACE #########################################################
+;### CONFIG ###################################################################
+;### MENU #####################################################################
+;### ALERT BOXES ##############################################################
+;### PRINTING WINDOW ##########################################################
+;### CONFIG WINDOW ############################################################
+;### GOTO #####################################################################
+;### FIND AND REPLACE #########################################################
+;### FONT DROPDOWN ############################################################
+;### MAIN WINDOW ##############################################################
+
+;---
 
 
 ;==============================================================================
 ;### CODE AREA ################################################################
 ;==============================================================================
+
+;tmpbuf used for
+;- fntcnv
+;- linpre, lingen
+
+
+tmpbuf  ds 512      ;##!!## merge with prtbufmem
+
 
 keymapbld   ;**BOLD
 db 0,0,0,0
@@ -138,14 +207,23 @@ db 123,124,125,126
 ;### PRGPRZ -> Application process
 maiwinnum   db 0    ;main     window ID
 drpwinnum   db -1   ;font downdown w ID
-diawin      db 0    ;dialogue window ID
+diawinnum   db 0    ;dialogue window ID
 tmpwin      db -1   ;print window
 windatsup   equ 51
 
-prgprz  call prglng
+prgprz  SyMacro_APPINI prgwindat,docpth
+        call prglng
         call prgpar
         call cfglod
         call cfgini
+
+        ld a,(fntcurflg)
+        and 2
+        ld (styold),a
+        ld a,(cfgdatviw)
+        bit 2,a
+        call nz,linact0
+
         call SySystem_HLPINI
 
         ld a,(App_BnkNum)
@@ -171,7 +249,7 @@ prgprz2 cp MSR_DSK_WMODAL
         jr z,prgprz5
         cp MSR_DSK_WCLICK       ;* window has been clicked?
         jr nz,prgprz0
-        ld a,(diawin)
+        ld a,(diawinnum)
         cp (iy+1)
         ld a,(iy+2)
         jr nz,prgprz3
@@ -214,7 +292,7 @@ prgkeyt db "N"-64:dw filnew ;CTRL+N = New
         db "F"-64:dw fndfnd ;CTRL+F = Find
         db 143:dw fndfnx    ;F3     = Find next
         db "R"-64:dw fndrep ;CTRL+R = Replace
-        db 158:dw edtgot    ;ALT+G  = Goto
+        db "G"-64:dw edtgot ;CTRL+G = Goto
         db 145:dw edttim    ;F5     = Date/Time
 
 prgkey  ld hl,prgkeyt
@@ -279,7 +357,7 @@ prgpar2 ld (hl),0
         ld a,c
         ld (prgparf),a
         ldir
-prgpar3 ret
+        ret
 
 ;### PRGLNG -> load language pack
 prglng  ld hl,(App_BegCode)
@@ -299,8 +377,39 @@ prglng  ld hl,(App_BegCode)
 ;### SUB-ROUTINES #############################################################
 ;==============================================================================
 
+;### WINTAB -> tab clicked
+;### Input      A=new tab, HL=tab table, DE=group record
+wintab  cp (hl)
+        jp z,prgprz0
+        ld (hl),a
+        ld c,a
+        add a
+        add c
+        inc a
+        ld c,a
+        ld b,0
+        add hl,bc
+        ldi
+        inc de
+        ldi:ldi
+        ld e,-1
+        ld a,(diawinnum)
+        call SyDesktop_WININH
+        jp prgprz0
+
+;### DIAOPN -> Open dialogue
+;### Input      DE=window record
+;### Returns to mainloop
+diaopn  ld a,(App_BnkNum)
+        call SyDesktop_WINOPN
+        jp c,prgprz0            ;memory full -> ignore
+        ld (diawinnum),a        ;window has been opened -> store ID
+        inc a
+        ld (prgwindat+windatsup),a
+        jp prgprz0
+
 ;### DIACNC -> Cancel dialogue
-diacnc  ld a,(diawin)
+diacnc  ld a,(diawinnum)
         call SyDesktop_WINCLS
         jp prgprz0
 
@@ -324,6 +433,59 @@ msgget2 ld a,(App_PrcID)
         db #dd:ld l,a           ;IXL=our own process ID
         db #dd:ld h,-1          ;IYL=sender ID (-1 = receive messages from any sender)
         ld iy,App_MsgBuf           ;IY=Messagebuffer
+        ret
+
+;### CLC24M -> multiply with 24
+;### Output     HL=A*24
+;### Destroyed  AF,DE
+clc24m  add a:add a:add a
+        ld l,a
+        ld h,0                      ;hl=*8
+        ld e,a
+        ld d,h                      ;de=*8
+        add hl,hl                   ;hl=*16
+        add hl,de                   ;hl=*24
+        ret
+
+;### CLCM16 -> Multiplies two 16-bit values
+;### Input      A=Value1, DE=Value2
+;### Output     HL=Value1*Value2 (16-bit)
+;### Destroyed  AF,DE
+clcm16  ld hl,0         ;3
+clcm161 or a            ;1
+        ret z           ;2 (4)
+        rra             ;1
+        jr nc,clcm162   ;3/2
+        add hl,de       ;0/3
+clcm162 sla e           ;2
+        rl d            ;2
+        jr clcm161      ;3 -> 15 per loop
+
+;### CLCD16 -> Divides two 16-bit values
+;### Input      BC=Value1, DE=Value2
+;### Output     HL=Value1/Value2, DE=Value1 MOD Value2
+;### Destroyed  AF,BC,DE
+clcd16  ld a,e
+        or d
+        ld hl,0
+        ret z
+        ld a,b
+        ld b,16
+clcd161 rl c
+        rla
+        adc hl,hl
+        sbc hl,de
+        jr nc,clcd162
+        add hl,de
+clcd162 djnz clcd161
+        rl c
+        rla
+        cpl
+        ld d,a
+        ld a,c
+        cpl
+        ld e,a
+        ex de,hl
         ret
 
 ;### CLCDEZ -> Converts byte into 2 decimal digits
@@ -427,45 +589,24 @@ clcr163 sbc hl,bc
 ;### DROPDOWN ROUTINES ########################################################
 ;==============================================================================
 
-fntcfgnum equ 11
-
-;### DRIFNT -> inits font dropdown window
-drifnt  ld ix,fntcolrec+16  ;gui records
-        ld hl,bmpfnttab     ;bitmap adr tab
-        ld bc,256*fntcfgnum
-drifnt1 call drifnt0
-        ld a,(iy-1)         ;a=yofs
-        add c
-        ld (ix+8),a
-        ld de,16
-        add ix,de
-        ld a,c
-        add 10
-        ld c,a
-        djnz drifnt1
-drifnt2 ld a,(cfgdatfnt)    ;selected font
+;### DRPMRK -> place marker in font dropdown
+drpmrk  ld a,(cfgdatfnt)    ;selected font
+        cp -1
+        jr z,drpmrk2
         add a
         ld c,a
         add a
         add a
         add c               ;a*=10
-        ld (fntcfgnum*16+fntcolrec+16+8),a  ;place marker on selected font
+drpmrk1 ld (fntcolrec1+32+8),a  ;place marker on selected font
         ret
-drifnt0 ld e,(hl)
-        inc hl
-        ld d,(hl)
-        push de:pop iy      ;de/iy=bitmap address
-        inc hl
-        ld (ix+4+0),e
-        ld (ix+4+1),d
-        ld a,(iy+1)
-        ld (ix+10),a
-        ld a,(iy+2)         
-        ld (ix+12),a        ;store xl/yl
-        ret
+drpmrk2 ld a,(fntcolctr+4)
+        sub 10
+        jr drpmrk1
+
 
 ;### DRPFNT -> opens font dropdown
-drpfnt  call drifnt
+drpfnt  call drpmrk
         ld a,(prgwindat+0)
         cp 2
         ld hl,-1
@@ -474,7 +615,7 @@ drpfnt  call drifnt
         jr z,drpfnt1
         ld hl,(prgwindat+4)
         ld de,(prgwindat+6)
-drpfnt1 ld bc,54
+drpfnt1 ld bc,70
         add hl,bc
         ld (fntwindat+4),hl
         ex de,hl
@@ -498,8 +639,10 @@ drpclk  push af
         pop af
         cp -1
         jp z,prgprz0
-        dec a
-        call styfnt
+        cp 253
+        jr c,drpclk1
+        add 2
+drpclk1 call styfnt
         jp prgprz0
 
 ;### DRPCLO -> close dropdown window
@@ -514,33 +657,50 @@ drpclo  ld hl,drpwinnum
 ;==============================================================================
 
 stytyp  db 0    ;0=normal, 1=bold, 2=italics, 3=underlined
+styold  db 0    ;[b1]=old wysiwyg-flag
 
+;### STYFNT -> select font
+;### Input      A=font (0=default, 1...=others, -1=extern)
 styfnt  ld hl,cfgdatfnt             ;A=new font style
         cp (hl)
         ret z
         ld (hl),a
-        push af
-        call cfgfnt
-        pop af
-styfnt0 dec a
+        call fntlod
+styfnt0 ld hl,styold
+        ld a,(fntcurflg)            ;+1=255 char input only, +2=wysiwyg
+        ld c,a
+        and 2
+        cp (hl)
+        jr z,styfnt3
+        ld (hl),a                   ;** WYSIWYG-status changed
+        or a
         jr nz,styfnt1
-        call stycvw                 ;convert to wysiwyg (cut <32, >126)
+        call stycvn                 ;to normal  -> convert from WYSIWYG to normal font
         jr styfnt2
-styfnt1 call stycvn                 ;convert to normal font
+styfnt1 call stycva                 ;to WYSIWYG -> convert from extended to ASCII (cut <32, >126)
         call stytog0
-styfnt2 ld de,256*prgtolrec_fntdrp+255-2
+styfnt2 ld de,256*prgtolrec_fntdrp+255-3
         ld a,(maiwinnum)
         call SyDesktop_WINTOL
         jp docrfs
+styfnt3 bit 1,c                     ;** no WYSIWYG-status change
+        jr nz,styfnt2               ;new is WYSIWYG, too -> keep it
+        bit 0,c                     ;old/new was not WYSIWYG, but...
+        jr nz,styfnt2               ;...new is 255char -> keep it
+        jr styfnt1                  ;...new if  96chat -> cut extended
 
+;### STYBLD/STYITA/STYULN -> style button clicked
 stybld  ld c,1                      ;button "bold" clicked
-        jr stymrk0
+        jr stymrk
 styita  ld c,2                      ;button "italics" clicked
-        jr stymrk0
+        jr stymrk
 styuln  ld c,3                      ;button "underlined" clicked
-        jr stymrk0
-stymrk  ld c,0                      ;marked button clicked -> deactivate
-stymrk0 call stytog
+        jr stymrk
+
+;### STYMRK -> style button clicked
+;### Input      C=style (0=none, 1=bold, 2=italics, 3=underlined)
+stymrk0 ld c,0
+stymrk  call stytog
         call styrfr
         jp prgprz0
 
@@ -556,9 +716,9 @@ stytog  ld a,c                      ;C=style -> toggle button
         jr c,stytog1
         ld de,2*16+prgtolrecp+2
         ld ix,keymapuln
-stytog1 ld a,(cfgdatfnt)            ;toggle button
-        dec a
-        ret nz
+stytog1 ld a,(fntcurflg)            ;toggle button
+        bit 1,a
+        ret z                       ;no wysiwyg -> ignore
         ld hl,stytyp
         ld a,c
         cp (hl)
@@ -600,9 +760,9 @@ stycurign
         db 95,96            ;both in normal and bold
         db 10,13,0          ;line feed, terminator
 
-stycur  ld a,(cfgdatfnt)
-        dec a
-        ret nz
+stycur  ld a,(fntcurflg)
+        bit 1,a
+        ret z               ;no wysiwyg -> ignore
         ld hl,(txtmulobj+texdatpos)
         ld a,l
         or h
@@ -674,9 +834,9 @@ stycur5 ld c,1              ;127-219 -> bold
         ret
 
 ;### STYRFR -> reformats the selected text with new font style
-styrfr  ld a,(cfgdatfnt)            ;toggle button
-        dec a
-        ret nz                      ;not wysiwyg -> no conversion
+styrfr  ld a,(fntcurflg)
+        bit 1,a
+        ret z                       ;no wysiwyg -> ignore
         ld hl,(txtmulobj+texdatmrk)
         ld a,l:or h
         ret z                       ;no marked text -> no conversion
@@ -703,28 +863,28 @@ styrfr2 ld a,(hl)
         jr nz,styrfr2
         jp docrfs
 
-;### STYCVW -> convert all text to wysiwyg (cut <32, >126)
-stycvw  ld hl,txtbufmem
+;### STYCVA -> convert all text to plain ASCII (cut <32, >126)
+stycva  ld hl,txtbufmem
         ld de,(txtmulobj+texdatlen)
-stycvw1 ld a,e
+stycva1 ld a,e
         or d
         ret z
         ld a,(hl)
         cp 10
-        jr z,stycvw3
+        jr z,stycva3
         cp 13
-        jr z,stycvw3
+        jr z,stycva3
         cp 32
-        jr c,stycvw2
+        jr c,stycva2
         cp 126+1
-        jr c,stycvw3
-stycvw2 ld a,"?"
-stycvw3 ld (hl),a
+        jr c,stycva3
+stycva2 ld a,"?"
+stycva3 ld (hl),a
         inc hl
         dec de
-        jr stycvw1
+        jr stycva1
 
-;### STYCVN -> convert all text to normal font
+;### STYCVN -> convert WYSIWYG text to ASCII
 stycvn  ld hl,txtbufmem
         ld de,(txtmulobj+texdatlen)
 stycvn1 ld a,e
@@ -737,7 +897,7 @@ stycvn1 ld a,e
         dec de
         jr stycvn1
 
-;### STY2AS -> convert WYSIWYG char to ASCII char
+;### STY2AS -> convert WYSIWYG char to ASCII
 ;### Input      A=char (0-255)
 ;### Output     A=ASCII code (0, 10, 13, 33-126)
 sty2as  or a
@@ -764,14 +924,14 @@ sty2as5 cp 030:jr z,styaup
         cp 031:jr z,styadw
         cp 139:jr z,styalf
         cp 155:jr z,styarg
-        ld a,"?"        ;special -> return "?"
+sty2as7 ld a,"?"        ;special -> return "?"
         ret
 sty2as6 cp 126+1
         ret c           ;32-126 ** NORMAL **
         cp 139
-        jr z,sty2as5
+        jr z,sty2as7
         cp 155          ;special -> return "?"
-        jr z,sty2as5
+        jr z,sty2as7
         cp 189
         jr z,sty2as3
         cp 190          ;space -> return " "
@@ -883,11 +1043,268 @@ sty2wy5 ld a,c
 
 
 ;==============================================================================
+;### LINENUMBER-ROUTINES ######################################################
+;==============================================================================
+
+lindatdig   db 3        ;current number of digits (3 [1-999], 4 [1000-9999], 5 [10000-65535])
+lindatyof   dw 0        ;super control yofs
+lindatbeg   dw 1        ;first line number
+
+;### LINACT -> switches line numbers on
+linact  call linact0
+        jp nc,docwin
+        ret
+linact0 call linmem
+        jr c,linact2
+        ;set ybeg
+        call linpre
+        call lingen
+        ld a,(5*1+prgmemtab+0)      ;modify controls
+        ld (prgwinobj+16+3),a
+        ld hl,(5*1+prgmemtab+1)
+        ld (prgwinobj+16+4),hl
+        ld a,(lindatdig)
+        ld e,a
+        add a
+        add a
+        add e
+        add 2
+        ld e,a
+        ld d,25
+        cpl
+        ld l,a
+        ld h,-1
+        ld c,2
+linact1 ld (prgwinclc1+16+8),hl
+        ld a,e
+        ld (prgwinclc1+16+0),a
+        dec a
+        ld (prgwinclc1+00+8),a
+        ld a,d
+        ld (prgwinobj+16+2),a
+linact4 ld hl,8*3+2+prgwinmen4
+        ld a,(hl)
+        res 1,a
+        or c
+        ld (hl),a
+        ret
+linact2 ld hl,cfgdatviw             ;no memory -> no line numbers
+        res 2,(hl)
+        ld c,0
+        call linact4
+        scf
+        ret
+
+;### LINOFF -> switches line numbers off
+linoff  ld hl,-2
+        ld de,64*256+1
+        ld c,0
+        call linact1                ;hide line numbers
+        ld hl,5*1+prgmemtab+0
+        ld a,(hl)
+        ld (hl),0
+        ld hl,(5*1+prgmemtab+1)
+        ld bc,(5*1+prgmemtab+3)
+        rst #20:dw jmp_memfre       ;free memory
+        jp docwin                   ;redraw all
+
+;### LINMEM -> reserve memory for line numbers
+;### Output     CF=0 -> (5*1+prgmemtab+x)=memory, (lingen7+1)=src/dstbnk
+;###            CF=1 -> memory full
+linmem  ld bc,128*26+14+16+16       ;16(grouprecord)+4(control)+6(text) bytes/linenumber + supercontrol data + group data + background record
+        xor a
+        ld e,2
+        push bc
+        rst #20:dw jmp_memget
+        pop bc
+        ret c
+        ld (5*1+prgmemtab+0),a
+        ld (5*1+prgmemtab+1),hl
+        ld (5*1+prgmemtab+3),bc
+        add a:add a:add a:add a
+        ld hl,App_BnkNum
+        add (hl)
+        ld (lingen7+1),a            ;low=this,high=linebank
+        or a
+        ret
+
+;### LINSWT -> switches line numbers on/off
+linswt  ld hl,cfgdatviw
+        ld a,(hl)
+        xor 4
+        ld (hl),a
+        and 4
+        push af
+        call z,linoff
+        pop af
+        call nz,linact
+        ;...cfgsav?
+        jp prgprz0
+
+;### LINDIG -> get number of necessary digits for line numbers
+;### Input      HL=max line number
+;### Output     A=number of digits (3-5)
+;### Destroyed  F,BC,HL
+lindig  ld a,3
+        ld bc,100
+        or a
+        sbc hl,bc
+        ret c
+        inc a
+        add hl,bc
+        ld bc,-1000
+        add hl,bc
+        ret nc
+        inc a
+        ret
+
+;### LINPRE -> prepares controls for line numbers
+;### Input      (5*1+prgmemtab+1)=destination, (lingen7+1)=src/dstbnk, (linpre1+1)=ybeg 16bit, (linpre5+1)=ydif 8bit
+linprectr   dw 00000,00040,10000, 0, 0, 0, 0
+linpregrp   db 129,0:dw 00000,0,0,256*0+0,0,0,0
+linprerec0  dw 00,255*256+0,128+2,00,00,100,10000,0
+linprerec   dw 00,255*256+1,00000,01,00,100,   08,0
+
+linpre  ld de,(5*1+prgmemtab+1)
+        ld hl,14                        ;** generate supercontrol + group
+        add hl,de
+        ld (linprectr+0),hl
+        ld bc,16
+        add hl,bc
+        ld (linpregrp+2),hl
+        add hl,bc
+        ld (linpre6+1),hl
+        ld bc,128*16
+        add hl,bc
+        ld (linpre2+2),hl
+        ld (linpre9+1),hl
+        ld bc,128*4
+        add hl,bc
+        ld (linpre7+1),hl   ;d800,e22e
+        ld (lingen0+1),hl
+        ld bc,14+16+16
+        ld hl,linprectr
+        ld a,(lingen7+1)
+        rst #20:dw jmp_bnkcop       ;copy control and group record to destination
+
+        ld ixh,4                        ;** generate group records
+linpre1 ld hl,1                     ;ybeg
+linpre2 ld iy,0                     ;ctrladr
+linpre3 ld de,tmpbuf
+        ld ixl,32
+        ld b,0
+linpre4 ld (linprerec+4),iy
+        ld (linprerec+8),hl
+        ld c,4
+        add iy,bc
+linpre5 ld c,8                      ;ydif
+        add hl,bc
+        push hl
+        ld hl,linprerec
+        ld bc,16
+        ldir
+        pop hl
+        dec ixl
+        jr nz,linpre4
+        push hl
+linpre6 ld de,0                     ;destination
+        ld hl,tmpbuf
+        ld bc,32*16
+        push de
+        ld a,(lingen7+1)
+        rst #20:dw jmp_bnkcop       ;copy control and group record to destination
+        pop hl
+        ld bc,32*16
+        add hl,bc
+        ld (linpre6+1),hl
+        pop hl
+        dec ixh
+        jr nz,linpre3
+
+        ld ixl,128                      ;** generate text controls
+        ld hl,tmpbuf
+linpre7 ld de,0                     ;textadr
+        ld bc,6
+linpre8 ld (hl),e  :inc hl
+        ld (hl),d  :inc hl
+        ld (hl),2+4:inc hl
+        ld (hl),0  :inc hl
+        ex de,hl
+        add hl,bc
+        ex de,hl
+        dec ixl
+        jr nz,linpre8
+linpre9 ld de,0                     ;ctrladr
+        ld hl,tmpbuf
+        ld bc,128*4
+        ld a,(lingen7+1)
+        rst #20:dw jmp_bnkcop       ;copy linenumber controls to destination
+        ret
+
+;### LINGEN -> generates lines numbers
+;### Input      (lindatbeg)=first line number
+        db -1
+lingend ds 5+1
+
+lingen  ld ix,(lindatbeg)
+        ld iy,lingend
+        ld e,5
+        call clcnum             ;generate first number
+        ld (lingen3+1),iy       ;store last digit adr
+        ld ixh,2                ;2*64 linenumbers
+lingen0 ld hl,0
+lingen1 push hl
+        ld de,tmpbuf
+        ld ixl,64
+        ld b,0
+        ld a,"9"+1
+lingen2 ld hl,lingend           ;copy linenumber to buffer
+        ld c,6
+        ldir
+lingen3 ld hl,0                 ;increase linenumber
+lingen4 inc (hl)
+        jr z,lingen5
+        cp (hl)
+        jr nz,lingen6
+        ld (hl),"0"
+        dec hl
+        jr lingen4
+lingen5 dec (hl)                ;new digit reached
+        ld hl,lingend+4
+        ld c,5
+        push de
+        ld de,lingend+5
+        lddr                    ;move digits right
+        ex de,hl
+        pop de
+        ld (hl),"1"             ;append 1 in front
+        ld hl,(lingen3+1)
+        inc hl
+        ld (lingen3+1),hl       ;last digit moves one to the right
+lingen6 dec ixl
+        jr nz,lingen2
+        ld hl,tmpbuf
+        pop de
+        push de
+        ld bc,64*6
+lingen7 ld a,0
+        rst #20:dw jmp_bnkcop   ;copy buffer to destination
+        pop hl
+        ld bc,64*6
+        add hl,bc
+        dec ixh
+        jr nz,lingen1
+        ret
+
+
+;==============================================================================
 ;### CONFIG-ROUTINES ##########################################################
 ;==============================================================================
 
-cfgnam  db "wordpad.dat",0:cfgnam0
-cfgpth  dw 0
+cfgnam  db "wordpad.ini",0:cfgnam0
+cfgfex  db "fns"
+cfgpth  dw 0    ;path start
+cfgptn  dw 0    ;name start
 
 ;### CFGGET -> Generates config path
 cfgget  ld hl,(App_BegCode)
@@ -900,11 +1317,11 @@ cfgget  ld hl,(App_BegCode)
         ld b,255
 cfgget1 ld a,(hl)           ;search end of path
         or a
-        jr z,cfgget2
+        jr z,cfgget6
         inc hl
         djnz cfgget1
         jr cfgget4
-        ld a,255
+cfgget6 ld a,255
         sub b
         jr z,cfgget4
         ld b,a
@@ -916,7 +1333,9 @@ cfgget2 ld (hl),0
         jr cfgget4
 cfgget3 inc hl
         ex de,hl
-cfgget4 ld hl,cfgnam        ;replace application filename with config filename
+cfgget4 ld (cfgptn),de
+cfgget0 ld hl,cfgnam        ;replace application filename with config filename
+        ld de,(cfgptn)
         ld bc,cfgnam0-cfgnam
         ldir
         ret
@@ -927,16 +1346,26 @@ cfgget5 ld a,(hl)
         ret z
         cp ":"
         ret
+cfggetf call cfgget0        ;set FNS extension
+        ld hl,-4
+        add hl,de
+        ex de,hl
+        ld hl,cfgfex
+        ld c,3
+        ldir
+        ret
 
 ;### CFGLOD -> Loads config
-cfglod  call cfgget
+cfglod  call cfgget                 ;get config path
+        call fntinf                 ;load font collection info
+        call cfgget0                ;set config extension
         ld hl,(cfgpth)
         ld a,(App_BnkNum)
         db #dd:ld h,a
         call SyFile_FILOPN          ;open file
         ret c
-        ld hl,cfgdat
-        ld bc,256
+        ld hl,cfgdatbeg
+        ld bc,cfgdatend-cfgdatbeg
         ld de,(App_BnkNum)
         push af
         call SyFile_FILINP          ;load configdata
@@ -945,21 +1374,13 @@ cfglod  call cfgget
         ret
 
 ;### CFGINI -> Initialize config
-cfgini  ld hl,prgwinmen4+2
-        ld de,cfgdatsta
-        ld a,(de)
-        add a
-        res 1,(hl)
-        or (hl)
-        ld (hl),a
-        and 2
-        call cfgbar1
-        jr nz,cfgini0
-        ld de,10
-        ld hl,(prgwindat+10)
-        add hl,de
-        ld (prgwindat+10),hl
-cfgini0 ld hl,(cfgdatpap)
+cfgini  ld hl,jmp_sysinf            ;get system font writing style for char limit (0=96) and upper/lowercase rules
+        ld de,256*1+5
+        ld ix,fntsystyp
+        ld iy,66+2+6+9+32+32
+        rst #28
+        call cfgbar0                ;update window state and menus checks for tool/statusbar
+        ld hl,(cfgdatpap)
         ld a,h
         add a:add a:add a:add a
         add l
@@ -976,124 +1397,20 @@ cfgini0 ld hl,(cfgdatpap)
         jr nz,cfgini1
         ld hl,(cfgdatwps)
 cfgini1 ld (txtmulobj+texdatxmx),hl
-cfgini2 ld a,(cfgdatfnt)
-        ld (fntdrpobj+12),a
-        ld a,(cfgfntnum)
-        inc a
-        ld (fntselobj),a
-        ld (fntdrpobj),a
-        dec a
-        jr z,cfgfnt
-        db #fd:ld l,a
-        add a
-        add a
-        ld l,a
-        ld h,0
-        ld de,cfgfntdat
-        add hl,de
-        ld ix,fntsellst+4
-        xor a
-cfgini3 ld (ix+2),l
-        ld (ix+3),h
-        ld de,4
-        add ix,de
-        ld bc,-1
-        cpir
-        db #fd:dec l
-        jr nz,cfgini3
-        call cfgwrp0
-        jr cfgfnt
-
-;### CFGFNT -> Loads font
-cfgfntl db -1   ;last loaded font
-cfgfnt  ld hl,txtmulobj+texdatflg
-        res 3,(hl)
-        ld a,(cfgdatfnt)
-        or a
-        jr z,cfgfnt2
-        ld hl,cfgfntl
-        cp (hl)
-        jp z,cfgfnt1
-        push af
-        ld hl,(cfgpth)
-        ld a,(App_BnkNum)
-        db #dd:ld h,a
-        call SyFile_FILOPN          ;open file
-        pop bc
-        ret c
-        push af
-        ld l,b
-        sla l
-        sla l
-        ld h,0
-        ld c,h
-        ld de,cfgfntdat-4
-        add hl,de                   ;hl=font size, offset
-        ld b,(hl)                   ;b=number of chars
-        inc hl
-        inc hl
-        ld e,(hl):db #dd:ld l,e
-        inc hl
-        ld e,(hl):db #dd:ld h,e     ;ix=offset in file
-        ld l,b
-        ld h,c
-        add hl,hl
-        add hl,hl
-        add hl,hl
-        inc hl                      ;2byte header
-        add hl,hl                   ;hl=chars*16+2=fontlen
-        push hl
-        ld iy,0
-        call SyFile_FILPOI          ;move to font data
-        ld hl,txtbufmem
-        ld de,txtbufmax+1
-        push af
-        add hl,de
-        pop af
-        pop bc                      ;bc=fontlen
-        pop de
-        jr c,cfgfnt0
-        ld (txtmulobj+texdatfnt),hl
-        ld a,(cfgfntcpr)
-        sub 1
-        ccf                         ;cf=compressed
-        ld a,d                      ;a=file handler
-        ld de,(App_BnkNum)
-        push af
-        call SyFile_FILCPR          ;load font
-        pop bc
-        jr c,cfgfnt0
-        call cfgfnt1
-        ld a,(cfgdatfnt)
-        ld (cfgfntl),a
-cfgfnt0 ld a,b
-        call SyFile_FILCLO          ;close file
-cfgfnt2 ld a,(cfgdatfnt)            ;update selected dropdown entry
-        add a
-        ld l,a
-        ld h,0
-        ld de,bmpfnttab
-        add hl,de
-        ld ix,prgtolrec_fntdrp_adr+16
-        call drifnt0
-        ld a,(iy-1)
-        add 3
-        ld (ix+8),a
-        jp drifnt2                  ;update marked entry in dropdown
-cfgfnt1 ld hl,txtmulobj+texdatflg
-        set 3,(hl)
-        ret
+cfgini2 call cfgwrp0
+        jp fntlod
 
 ;### CFGSAV -> Save config
-cfgsav  ld hl,(cfgpth)      ;open config file
+cfgsav  call cfgget0
+        ld hl,(cfgpth)      ;open config file
         ld a,(App_BnkNum)
         db #dd:ld h,a
         xor a
-        call SyFile_FILOPN
+        call SyFile_FILNEW
         ret c
         ld de,(App_BnkNum)   ;save config
-        ld hl,cfgdat
-        ld bc,16
+        ld hl,cfgdatbeg
+        ld bc,cfgdatend-cfgdatbeg
         push af
         call SyFile_FILOUT
         pop af              ;close config file
@@ -1112,20 +1429,7 @@ cfgopn  ld a,(cfgdatwrp)
         ld iy,cfgwinbuf2
         ld e,2
         call cfgopn1
-        ld bc,(fntselobj-1)
-        ld hl,fntsellst+1
-        ld de,4
-cfgopn2 res 7,(hl)
-        add hl,de
-        djnz cfgopn2
-        ld a,(cfgdatfnt)
-        ld (fntselobj+12),a
-        add a:add a
-        ld l,a
-        ld h,0
-        ld de,fntsellst+1
-        add hl,de
-        set 7,(hl)
+        call cfgopn0
         ld a,(cfgdatpap)
         ld (papselobj+12),a
         ld c,a
@@ -1133,13 +1437,8 @@ cfgopn2 res 7,(hl)
         ld (penselobj+12),a
         call cfgcol0
         ld de,cfgwindat
-cfgopn0 ld a,(App_BnkNum)
-        call SyDesktop_WINOPN
-        jp c,prgprz0            ;memory full -> ignore
-        ld (diawin),a           ;window has been opened -> store ID
-        inc a
-        ld (prgwindat+windatsup),a
-        jp prgprz0
+        jp diaopn
+
 cfgopn1 push iy
         call clcnum
         ex (sp),iy
@@ -1153,11 +1452,35 @@ cfgopn1 push iy
         ld (iy-10),l
         ret
 
+;marks selected font in config fontlist
+cfgopn0 ld bc,(fntselobj-1)
+        ld hl,fntsellst+1
+        ld de,6
+cfgopn2 res 7,(hl)
+        add hl,de
+        djnz cfgopn2
+        ld a,(cfgdatfnt)
+        cp -1
+        jr nz,cfgopn3
+        ld a,(fntselobj)
+        dec a
+cfgopn3 ld (fntselobj+12),a
+        add a
+        ld l,a
+        add a
+        add l
+        ld l,a
+        ld h,0
+        ld de,fntsellst+1
+        add hl,de
+        set 7,(hl)
+        ret
+
 ;### CFGCOL -> Updates colour preview
 cfgcol  call cfgcol0
-        ld a,(diawin)
-        ld e,8
-        call SyDesktop_WINDIN
+        ld a,(diawinnum)
+        ld e,cfgwinobja_prv
+        call SyDesktop_WININH
         jp prgprz0
 cfgcol0 ld a,(penselobj+12)
         add a:add a:add a:add a
@@ -1165,6 +1488,40 @@ cfgcol0 ld a,(penselobj+12)
         add (hl)
         ld (cfgwindsc8+2),a
         ret
+
+;### CFGTAB -> preferences tab pressed
+cfgtabo db 0
+cfgtabt db cfgwinobja_cnt:dw cfgwinobja
+        db cfgwinobjb_cnt:dw cfgwinobjb
+cfgtab  ld a,(ctrcfgtab0)
+        ld hl,cfgtabo
+        ld de,cfgwingrp
+        jp wintab
+
+;### CFGFBR -> Browse font
+cfgfbr  ld hl,cfgdatfpt
+        ld de,fntmsk+4
+        ld bc,256
+        ldir
+        ld de,fntmsk
+        call filopn1
+        or a
+        jp nz,prgprz0
+        ld hl,fntmsk+4
+        ld de,cfgdatfpt
+        ld bc,256
+        ldir
+        dec a
+        ld (cfgdatfnt),a
+        dec a
+        ld (fntlodl),a
+        call fntlod
+        call styfnt0
+        call cfgopn0                ;remark config list
+        ld e,cfgwinobja_fntlst      ;redraw config list
+        ld a,(diawinnum)
+        call SyDesktop_WININH
+        jp prgprz0
 
 ;### CFGOKY -> Close config-dialogue and save config
 cfgoky  ld a,(cfgwinwrp)
@@ -1185,6 +1542,15 @@ cfgoky1 ld ix,cfgwinbuf2
         ld a,l
         ld (cfgdattab),a
 cfgoky2 ld a,(fntselobj+12)
+        add a
+        ld c,a
+        add a
+        add c
+        ld c,a
+        ld b,0
+        ld hl,fntsellst
+        add hl,bc
+        ld a,(hl)
         ld hl,cfgdatfnt
         cp (hl)
         push af
@@ -1196,11 +1562,11 @@ cfgoky2 ld a,(fntselobj+12)
         call cfgsav
         call cfgini
         pop af
-        ld a,(cfgdatfnt)
         call nz,styfnt0
-        ld a,(diawin)
+;### CFGCNC -> Cancel config window
+cfgcnc  ld a,(diawinnum)
         call SyDesktop_WINCLS
-        ld de,256*prgtolrec_fntdrp+255-2
+        ld de,256*prgtolrec_fntdrp+255-3
         ld a,(maiwinnum)
         call SyDesktop_WINTOL
         jp prgprz0
@@ -1225,35 +1591,595 @@ cfgwrp1 ld (prgwinmen3+2),a
         ret
 
 ;### CFGBAR -> Switches the status bar on/off
-cfgbar  ld hl,prgwinmen4+2
-        ld de,cfgdatsta
-        ld a,(hl)               ;modify menu
-        xor 2
+cfgbart ld bc,1*256+17              ;toggle toolbar
+        jr cfgbar
+cfgbars ld bc,2*256+10              ;toggle statusbar
+cfgbar  ld hl,cfgdatviw
+        ld a,(hl)
+        xor b
         ld (hl),a
-        and 2
-        rra
-        ld (de),a
-        call cfgbar1
-        ld de,10
-        jr z,cfgbar2
-        call edtchg5
-        ld de,-10
-cfgbar2 ld hl,(prgwindat+10)
-        add hl,de
+        and b                       ;correct ysize
+        ld a,c
+        ld b,0
+        jr z,cfgbar1
+        neg
+        dec b
+cfgbar1 ld c,a
+        ld hl,(prgwindat+10)
+        add hl,bc
         ld (prgwindat+10),hl
-        ld a,(prgwindat)
-        cp 2
-        ld a,(maiwinnum)
-        push af
-        call z,SyDesktop_WINMAX
-        pop af
-        call nz,SyDesktop_WINMID
+        call cfgbar0                ;update props/checks
+        call docwin
         jp prgprz0
-cfgbar1 ld hl,prgwindat+1
-        res 6,(hl)
-        ret z
-        set 6,(hl)
+;update menu/window prop flags
+cfgbar0 ld hl,cfgdatviw
+        ld a,(prgwindat+1)
+        and %10110111
+        bit 0,(hl)
+        jr z,cfgbar2
+        set 3,a
+cfgbar2 bit 1,(hl)
+        jr z,cfgbar3
+        set 6,a
+cfgbar3 ld (prgwindat+1),a
+        ld a,(hl)
+        ld hl,1*8+2+prgwinmen4
+        call cfgbar4
+        add a
+        ld hl,0*8+2+prgwinmen4
+cfgbar4 push af
+        and 2
+        res 1,(hl)
+        or (hl)
+        ld (hl),a
+        pop af
         ret
+
+
+;==============================================================================
+;### FONT-ROUTINES ############################################################
+;==============================================================================
+
+fntcurysz   db 0    ;y-size
+fntcurtyp   db 0    ;header byte 1 [bit5]=wysiwyg, [bit0-4]=codepage (0=96 char ascii)
+fntcurflg   db 0    ;+1=255 chars, +2=wysiwyg
+
+;### FNTINF -> load font collection info and prepare lists and drowpdown menu
+fntinfi db "SYMFNS10"
+fntinft dw 0                ;thumbnail pointer address
+
+fntinf  call cfggetf
+        ld hl,(cfgpth)
+        ld a,(App_BnkNum)
+        db #dd:ld h,a
+        push af
+        call SyFile_FILOPN          ;open file
+        pop de
+        jr c,fntinf3                ;error, open
+        ld e,d
+        ld hl,fntdatbeg
+        ld bc,16
+        push af
+        call SyFile_FILINP          ;load header
+        pop bc
+        jr c,fntinf2                ;error, read
+        ld hl,fntinfi
+        ld de,fntdatids
+        ld c,8
+fntinf1 ld a,(de)                   ;check for correct filetype
+        cp (hl)
+        scf
+        jr nz,fntinf2               ;error, wrong ID
+        inc de:inc hl
+        dec c
+        jr nz,fntinf1
+        ld a,(App_BnkNum)
+        ld e,a
+        ld a,b
+        ld bc,(fntdatsiz)
+        ld hl,fntdatinf
+        push af
+        call SyFile_FILINP          ;load infos
+        pop bc
+fntinf2 push af
+        ld a,b
+        call SyFile_FILCLO          ;close file
+        pop af
+        jr nc,fntinf4
+fntinf3 xor a                       ;error -> no font collection
+        ld (fntdatnum),a
+
+fntinf4 ld a,(fntdatnum)        ;** prepare font list
+        ld b,a
+        inc a
+        ld (fntselobj),a
+        add a
+        ld c,a
+        add a:add a
+        add c
+        ld (fntcolctr+4),a
+        ld ix,fntsellst+6
+        ld hl,fntdatinf+8
+        ld a,b
+        or a
+        push af
+        jr z,fntinf6
+        xor a
+fntinf5 inc a
+        ld (ix+0),a
+        ld (ix+2),l
+        ld (ix+3),h
+        ld de,24
+        add hl,de
+        ld e,6
+        add ix,de
+        djnz fntinf5
+fntinf6 ld de,fnttxtext
+        ld (ix+0),255
+        ld (ix+2),e
+        ld (ix+3),d
+        ld de,fnttxtpx17
+        ld (ix+4),e
+        ld (ix+5),d
+        pop af                  ;** prepare font dropdown
+        ld b,a
+        ld a,10                     ;a=ypos
+        jr z,fntinf8
+        ld de,-8
+        add hl,de                   ;hl=thumbnails pointers
+        ld (fntinft),hl
+        ld ix,3*16+fntcolrec
+        ld iy,fntdatinf
+fntinf7 push bc
+        ld bc,fntdatbeg+1
+        call fntinf9                ;relocate bitmap pointer
+        push de
+        push hl
+        ex de,hl
+        inc hl:inc hl:inc hl
+        dec bc
+        call fntinf9                ;relocate bitmap addresses
+        call fntinf9
+        pop hl
+        pop de
+        call fntinf0                ;show thumbnail in dropdown
+
+        push af
+        ex de,hl
+        ld a,(iy+4)
+        call fntinfb                ;display font y-px
+        ex de,hl
+        pop af
+
+        add 10
+        ld bc,32
+        add ix,bc
+        ld c,24
+        add iy,bc
+        pop bc
+        djnz fntinf7
+fntinf8 inc a
+        ld (fntcolrec1+8+16),a      ;set "external" pos
+        add 2
+        ld (fntcolrec1+8),a
+        ret
+fntinf9 ld e,(hl):inc hl            ;(HL)+=BC, DE=(HL), HL+=2
+        ld d,(hl):dec hl
+        ex de,hl
+        add hl,bc
+        ex de,hl
+        ld (hl),e:inc hl
+        ld (hl),d:inc hl
+        ret
+
+;ix=px record, a=px-value value -> write px-value in control text
+fntinfb ld l,(ix+4)
+        ld h,(ix+5)
+        push ix
+        ld c,(hl):inc hl
+        ld b,(hl)
+        push bc:pop ix
+        call clcdez                 ;show font y-px
+        ld a,l
+        ld (ix+0),a
+        ld (ix+4),a
+        cp "0"
+        jr z,fntinfa
+        inc ix
+fntinfa ld a,h
+        ld (ix+0),a
+        ld (ix+4),a
+        ld a,":"
+        ld (ix+1),a
+        xor a
+        ld (ix+2),a
+        ld (ix+5),a
+        pop ix
+        ret
+
+;de=thumbnail gfxheader, ix=control, a=yofs -> sets type, adr, ypos, x/ysize -> a,hl unchanged
+fntinf0 ld (ix+00+02),5
+        ld (ix+16+02),10
+        ld (ix+16+04),e
+        ld (ix+16+05),d             ;set thumbnail adr
+        ex de,hl
+        dec hl
+        add (hl)
+        ld (ix+16+08),a             ;set thumbnail ypos
+        sub (hl)
+        inc hl
+        inc hl
+        ld c,(hl)
+        ld (ix+16+10),c             ;set thumbnail size
+        inc hl
+        ld c,(hl)
+        ld (ix+16+12),c
+        ex de,hl
+        ret
+
+;### FNTLOD -> Loads font
+fntlodl db -2   ;last loaded font
+fntlodh db 0    ;file handler
+
+fntlod  ld a,(cfgdatfnt)
+        ld hl,fntlodl
+        cp (hl)
+        jp z,fntsel                 ;same font -> finished
+        inc a
+        jr z,fntlod6
+        dec a
+        jr nz,fntlod1
+
+fntlod0 xor a                           ;** set default font
+        ld (fntlodl),a
+        ld hl,txtmulobj+texdatflg   ;no alternative font
+        res 3,(hl)
+        ld a,(5*0+prgmemtab+0)
+        or a
+        jp z,fntsel
+        ld hl,(5*0+prgmemtab+1)
+        ld bc,(5*0+prgmemtab+3)
+        rst #20:dw jmp_memfre       ;free font memory
+        jp fntsel
+
+fntlod6 ld a,(App_BnkNum)               ;** load external font
+        ld hl,cfgdatfpt
+        db #dd:ld h,a
+        call SyFile_FILOPN          ;open file
+        jp c,fntlod4                ;error fileopen
+        ld (fntlodh),a
+        call fntlod0
+        ld c,2
+        call fntlodo                ;get length
+        jp c,fntlod3
+        push ix
+        ld c,0
+        call fntlodo
+        pop bc
+        jp c,fntlod2
+        call fntcnv                 ;load and convert font
+        jr c,fntlod8
+        ld ix,fntcolrec1
+        ld a,(fntcnvysz)
+        call fntinfb
+        ld a,(fntdatnum)
+        add 2
+        ld hl,fntselobj
+        cp (hl)
+        jr z,fntlod8
+        inc (hl)
+        ld a,(fntcolctr+4)
+        add 10
+        ld (fntcolctr+4),a
+        jr fntlod8
+
+fntlod1 call cfggetf                    ;** load alternative font
+        ld a,(App_BnkNum)
+        ld hl,(cfgpth)
+        db #dd:ld h,a
+        call SyFile_FILOPN          ;open file
+        jp c,fntlod4                ;error fileopen
+        ld (fntlodh),a
+        call fntlod0                ;remove current font
+        ld a,(cfgdatfnt)
+        call clc24m                 ;hl=a*24
+        ld de,fntdatinf-24
+        add hl,de                   ;hl=font size, offset
+        ld c,(hl)
+        inc hl
+        ld b,(hl)                   ;bc=font size
+        push hl
+        call fntmem0
+        pop de
+        jr c,fntlod3                ;error memfull
+        ex de,hl
+        inc hl
+        ld a,(hl):db #dd:ld l,a
+        inc hl
+        ld a,(hl):db #dd:ld h,a     ;ix=offset in file
+        push bc
+        ld c,0
+        call fntlodp                ;move to fontdata
+        pop bc
+        jr c,fntlod2                ;file error
+        ld a,(5*0+prgmemtab+0)
+        ld e,a
+        ld a,(fntdatflg)
+        rra                         ;cf=compressed
+        ld a,(fntlodh)
+        ld hl,(5*0+prgmemtab+1)
+        call SyFile_FILCPR          ;load font data
+
+fntlod8 jr c,fntlod2                    ;** finished loading
+        ld a,(fntlodh)
+        call SyFile_FILCLO
+        ld hl,(5*0+prgmemtab+1)
+        ld (txtmulobj+texdatfnt),hl ;set font address
+        ld hl,txtmulobj+texdatflg
+        set 3,(hl)                  ;activate alternative font
+        set 6,(hl)                  ;activate bigfont
+        ld a,(cfgdatfnt)
+        ld (fntlodl),a
+        jp fntsel
+
+fntlod2 call fntlod0                ;error -> reset font, close
+fntlod3 xor a
+        ld (cfgdatfnt),a
+        ld a,(fntlodh)
+        call SyFile_FILCLO          ;error -> close
+fntlod4 ld hl,prgtxterr6            ;error -> only show message
+        ld b,1+8+64
+        call prginf0
+        jp fntsel
+
+fntlodo ld ix,0
+fntlodp ld iy,0
+        ld a,(fntlodh)
+        jp SyFile_FILPOI          ;move pointer
+
+;### FNTMEM -> calculates and reserves bigfont memory for fontfile
+;### Input      (fntlodh)=file handler, bc=filesize
+;### Output     CF=0 ok, (5*0+prgmemtab+0/1)=bank/address, (5*0+prgmemtab+3)=size, corrected fontheader stored, e=original fontheader[0], a=bank, hl=destination, d=number of chars
+fntmemh ds 2                    ;font header
+fntmem  push bc
+        ld a,(App_BnkNum)
+        ld e,a
+        ld a,(fntlodh)
+        ld bc,2
+        ld hl,fntmemh
+        call SyFile_FILINP
+        pop bc
+        ret c
+        ld hl,(fntmemh)
+        xor a
+        bit 7,l
+        jr z,fntmem3
+        ld a,h
+        ld h,1
+fntmem3 ld (fntcnvflg),a
+        bit 6,l
+        jr nz,fntmem2           ;bigfont -> use filesize directly
+        bit 5,l
+        ld de,16
+        jr z,fntmem1
+        ld e,9
+fntmem1 push hl                 ;(sp)=header
+        ld a,l
+        push af
+        dec bc:dec bc
+        call clcd16             ;hl=number of chars
+        inc h:dec h
+        jr z,fntmem5
+        ld hl,255               ;maximum=255 always
+fntmem5 ld a,l
+        ld (fntmem4+1),a
+        ld e,l:ld d,h           ;de=num chars
+        pop af                  ;a=header[0]
+        and 15
+        add 3+2                 ;a=size of one char+offset entry
+        call clcm16
+        ld c,l
+        ld b,h
+        inc bc:inc bc           ;bc=chars*size+2=total size
+        pop hl                  ;hl=header
+fntmem2 push hl
+        call fntmem0
+        pop bc                  ;bc=font header
+        ld e,c
+        bit 6,c
+        jr nz,fntmem6
+        res 4,c                 ;convert header bits to big font
+        res 5,c
+        set 6,c
+fntmem6 rst #20:dw jmp_bnkwwd   ;store corrected font header
+fntmem4 ld d,0
+        ret
+fntmem0 push bc                 ;bc=length -> reserve memory -> de=hl,bc=bc,cf=error, 
+        xor a
+        ld e,1
+        rst #20:dw jmp_memget
+        pop bc
+        ret c
+        ld (5*0+prgmemtab+0),a
+        ld (5*0+prgmemtab+1),hl
+        ld (5*0+prgmemtab+3),bc
+        ld (txtmulobj+texdatfbk),a  ;set font bank
+        ret
+
+;### FNTCNV -> load any kind of font (small/medium/big) and stores it as bigfont
+;### Input      (fntlodh)=file handler, bc=filesize
+;### Output     CF=0 ok, (fntcnvysz)=ypix, CF=1 memory/disc error
+fntcnvysz   db 0    ;written by fntcnv
+fntcnvflg   db 0    ;written by fntmem (0, if header[0,b7]=0)
+
+fntcnva equ tmpbuf+000  ;output conversion buffer
+fntcnvb equ tmpbuf+256  ;input  conversion buffer
+
+fntcnv  call fntmem
+        ret c
+        ld (fntchu1+1),hl
+        bit 6,e
+        jr z,fntcnv1
+        ld d,e                  ;** font is bigfont -> just load
+        ld e,a
+        ld a,d
+        and 63
+        ld (fntcnvysz),a            ;store ysize
+        ld a,(fntlodh)
+        ld bc,(5*0+prgmemtab+3)
+        dec bc:dec bc
+        jp SyFile_FILINP
+fntcnv1 ld a,d                  ;** font is medium/small -> convert
+        ld (fntcnv6+1),a            ;store total chars
+        bit 5,e
+        ld d,e
+        ld e,16                     ;e=chars size
+        ld a,e                      ;a=max chars per chunk
+        ld hl,256                   ;hl=chunk size
+        jr z,fntcnv2
+        ld e,09
+        ld a,28
+        ld hl,252
+fntcnv2 ld (fntcnv4+1),hl           ;store chunk size
+        ld (fntcnv5+2),a            ;store chars/chunk
+        ld a,d
+        and 15
+        ld (fntcnvysz),a            ;store ysize
+        push af
+        neg
+        add e
+        dec a
+        ld (fntcnv8+1),a            ;store ydif
+        pop af                  ;** create offset table
+        inc a
+        ld c,a:ld b,0               ;bc=ofsadd=ylen+1
+        ld a,(fntcnv6+1)            ;a=num chars
+        ld l,a
+        ld h,b
+        add hl,hl
+        dec hl
+        ex de,hl                    ;de=ofsbeg=chars*2-1
+        ld hl,fntcnva
+fntcnv3 ld (hl),e:inc hl
+        ld (hl),d:inc hl
+        ex de,hl
+        add hl,bc
+        ex de,hl
+        dec a
+        jr nz,fntcnv3
+        call fntchu                 ;end=hl -> copy chunk to destination
+
+fntcnv4 ld bc,0                         ;** load one chunk
+        ld a,(App_BnkNum)
+        ld e,a
+        ld hl,fntcnvb
+        ld a,(fntlodh)
+        push hl
+        call SyFile_FILINP
+        pop hl
+        ret c                       ;error -> quit
+fntcnv5 ld ixl,0                    ;ixl=chars/chunk
+fntcnv6 ld a,0                      ;a=remaining chars
+        cp ixl
+        jr nc,fntcnv9
+        ld ixl,a                    ;ixl=chars to convert
+fntcnv9 ld de,fntcnva
+fntcnv7 ld a,(hl)                   ;set width twice
+        ldi
+        ld (de),a
+        inc de
+        ld a,(fntcnvysz)
+        ld c,a
+        xor a
+        ld b,a
+        ldir                        ;copy bitmap
+        ld (de),a                   ;set 0-terminator
+        inc de
+fntcnv8 ld c,0
+        add hl,bc
+        dec ixl
+        jr nz,fntcnv7
+        ex de,hl
+        call fntchu                 ;end=hl -> copy chunk to destination
+        ld a,(fntcnv6+1)
+        ld hl,fntcnv5+2
+        sub (hl)
+        ret z
+        ld (fntcnv6+1),a
+        jr nc,fntcnv4
+        or a
+        ret
+
+;### FNTCHU -> copy one converted font chunk to destination
+;### Input      HL=buffer end, (fntchu1+1)=destination
+;### Output     (fntchu1+1)=updated
+fntchu  ld de,fntcnva
+        or a
+        sbc hl,de
+        ld c,l:ld b,h
+        ld a,(5*0+prgmemtab+0)
+        add a:add a:add a:add a
+        ld hl,App_BnkNum
+        add (hl)
+        ex de,hl
+fntchu1 ld de,0
+        push bc
+        push de
+        rst #20:dw jmp_bnkcop
+        pop hl
+        pop bc
+        add hl,bc
+        ld (fntchu1+1),hl
+        ret
+
+;### FNTSEL -> show selected font
+fntsel  ld ix,prgtolrec_fntdrp_adr
+        ld a,(cfgdatfnt)
+        inc a
+        ld bc,(fntcnvysz)           ;c=ysize, b=type/flags
+        ld hl,fntobjext
+        jr z,fntsel1
+        dec a
+        ld bc,(fntsysysz)
+        ld hl,fntobjdef
+        jr z,fntsel1
+        dec a                   ;** show font thumbnail
+        push af
+        call clc24m                 ;hl=a*24
+        ld de,fntdatinf+4
+        add hl,de
+        ld c,(hl)
+        inc hl
+        ld b,(hl)
+        call fntsel2                ;set px for selected font
+        pop af
+        add a
+        ld e,a
+        ld d,0
+        ld hl,(fntinft)
+        add hl,de
+        ld e,(hl):inc hl
+        ld d,(hl)
+        ld a,3
+        jp fntinf0
+fntsel1 ld (ix+16+2),1          ;** show default/extern text
+        ld (ix+16+4),l
+        ld (ix+16+5),h
+        ld (ix+16+8),4
+        ld (ix+16+10),48
+        ld (ix+16+12),8
+fntsel2 ld (fntcurysz),bc
+        ld a,b
+        and 31
+        jr z,fntsel3
+        ld a,1
+fntsel3 bit 5,b
+        jr z,fntsel4
+        add 2
+fntsel4 ld (fntcurflg),a
+        ld a,c
+        ld (linpre5+1),a
+        jp fntinfb
 
 
 ;==============================================================================
@@ -1291,9 +2217,10 @@ filopn  call filmod
         or a
         call z,fillod
         jp prgprz0
-filopn0 ld hl,App_BnkNum
+filopn0 ld de,docmsk
+filopn1 ld hl,App_BnkNum
         add (hl)
-        ld hl,docmsk
+        ex de,hl
         ld c,8
         ld ix,100
         ld iy,5000
@@ -1504,9 +2431,9 @@ filprt2 ld a,(hl)
         or a
         jr z,filprt4
         push hl
-        ld hl,(cfgdatfnt)
-        dec l
-        jr nz,filprt5
+        ld hl,cfgdatfnt
+        bit 1,(hl)
+        jr z,filprt5
         push af
         call stychr         ;a=char -> a=type
         ld hl,filprtfnt
@@ -1661,7 +2588,7 @@ edtgot  ld hl,(gotdatoln+texdatlen)
         ld a,3
         ld (gotwingrp+14),a
         ld de,gotwindat
-        jp cfgopn0
+        jp diaopn
 
 ;### EDTTIM -> Edit Date/Time
 edttims db "00:00:00 00.00.0000",0
@@ -1739,7 +2666,7 @@ edttim1 ld hl,(txtmulobj+texdatlen)     ;increase length
 ;### FNDFND -> Opens Find-Dialogue
 fndfnd  call fndfnd1
         ld de,fndwindat
-        jp cfgopn0
+        jp diaopn
 fndfnd1 ld bc,(txtmulobj+texdatmrk)
         ld a,c:or b
         jr z,fndfnd5
@@ -1779,10 +2706,10 @@ fndrep  call fndfnd1
         ld hl,fnddattrp
         call fndlfp
         ld de,repwindat
-        jp cfgopn0
+        jp diaopn
 
 ;### FNDFOK -> Start Find
-fndfok  ld a,(diawin)
+fndfok  ld a,(diawinnum)
         call SyDesktop_WINCLS
         jp fndfnx
 
@@ -1794,8 +2721,8 @@ fndrok  call fndrok0
 fndrok1 call fndfnx2
         rst #30
         ld de,rplwindat
-        jp cfgopn0
-fndrok0 ld a,(diawin)
+        jp diaopn
+fndrok0 ld a,(diawinnum)
         call SyDesktop_WINCLS
         ld hl,fnddattfn
         call fndplf
@@ -1812,7 +2739,7 @@ fndrdr  call fndrok0
         push hl
         call fndrpl
         pop de
-        jr c,fndral3
+        jp c,fndral3
         ld hl,(fnddatorp+texdatlen)
         add hl,de
         ld (txtmulobj+texdatmsg+0),hl
@@ -1861,12 +2788,20 @@ fndral2 pop bc
         jr z,fndfnx0
         push bc:pop ix
         ld e,5
-        ld iy,fndmsgtxt2b
+        ld iy,(fndmsgtxt2b+1)
+        push iy
         call clcnum
         push iy:pop de
         inc de
-        ld hl,fndmsgtxt2c
-        ld bc,8
+        ld hl,(fndmsgtxt2c+1)
+        pop bc
+        push hl
+        or a
+        sbc hl,bc
+        ld bc,5
+        sbc hl,bc
+        ld c,l:ld b,h
+        pop hl
         ldir
         call docrfs
         ld hl,prgtxtrep
@@ -2105,7 +3040,7 @@ fndlfp1 or a
         jr fndlfp0
 
 ;### FNDGOT -> Goto
-fndgot  ld a,(diawin)           ;close dialogue
+fndgot  ld a,(diawinnum)        ;close dialogue
         call SyDesktop_WINCLS
         ld ix,gotdattln         ;convert line
         xor a
@@ -2181,7 +3116,7 @@ texdatflg       equ 12          ;Flags (Bit0=Paßwort [nur singleline], Bit1=Read
 texdatcol       equ 13          ;4bit txtpap, 4bit txtpen
 texdatrhm       equ 14          ;4bit rahmen1, 4bit rahmen2
 texdatfnt       equ 15          ;Adresse des alternativen Fonts
-texdatrs1       equ 17          ;*reserved 1byte*
+texdatfbk       equ 17          ;Ram bank of the alternative font (if big font)
 ;** ab hier nur Multiline
 texdatlnt       equ 18          ;aktuelle Anzahl Zeilen
 texdatxmx       equ 20          ;maximale Zeilenbreite in Pixeln bei Wordwrap-Pos-Vorgabe (-1=unbegrenzt)
@@ -2224,10 +3159,16 @@ docini1 ex de,hl
         dec hl
         xor a
         ld (hl),a
+        ld e,a:ld d,a
         ld bc,txtbufmem
         sbc hl,bc                   ;hl=textlength (=min(found(0),found(26))
         ld (txtmulobj+texdatlen),hl
-docini2 ld a,l
+        ex de,hl
+        ld a,(fntcurflg)            ;+1=255 chars, +2=wysiwyg
+        and 3
+        jr nz,docnew1
+        ex de,hl
+docini2 ld a,l                      ;remove additional chars for 96-ascii-font
         or h
         jr z,docnew1
         ld a,(bc)
@@ -2262,9 +3203,23 @@ docnew1 ld (txtmulobj+texdatpos),hl
 docrfs  call edtchg1
         ld hl,-8
         ld (txtmulobj+texdatxwn),hl
-        ld a,(maiwinnum)
-        ld e,1
+        ld a,(cfgdatviw)
+        bit 2,a
+        jr nz,docrfs2
+        ld e,prgwinobj_edit
+docrfs1 ld a,(maiwinnum)
         jp SyDesktop_WINDIN
+docrfs2 call linpre
+        call lingen
+        ld e,-1
+        jr docrfs1
+
+;### DOCWIN -> refresh whole window (for line numbers, as calculation rules changed)
+docwin  ld a,(prgwindat)            ;redraw window
+        cp 2
+        ld a,(maiwinnum)
+        jp z,SyDesktop_WINMAX
+        jp SyDesktop_WINMID
 
 
 prtbuflen   equ 2048
@@ -2331,121 +3286,18 @@ arrdwngfx db 4,8,8:dw $+7:dw $+4,4*8:db 5
 db #11,#11,#11,#11, #18,#88,#88,#81, #18,#81,#18,#81, #11,#11,#11,#11, #18,#11,#11,#81, #18,#81,#18,#81, #18,#88,#88,#81, #11,#11,#11,#11
 
 
-;### FONT PREVIEW BITMAPS #####################################################
-
-bmpfnttab
-dw bmpfntdef,bmpfntwys
-dw bmpfntbld,bmpfntita,bmpfntbig,bmpfntmic,bmpfntmsd
-dw bmpfntari,bmpfntcou,bmpfntede,bmpfnttim
+;### FONT DATA ################################################################
 
 
-bmpfntdef0  db 2
-bmpfntdef   db 14,28,06:dw $+7:dw $+4,14*06:db 5
-db #11,#18,#88,#88,#88,#81,#88,#88,#88,#88,#88,#81,#88,#18
-db #18,#81,#88,#11,#88,#18,#88,#11,#18,#18,#81,#81,#88,#11
-db #18,#81,#81,#88,#18,#11,#81,#88,#18,#18,#81,#81,#88,#18
-db #18,#81,#81,#11,#18,#18,#81,#88,#18,#18,#81,#81,#88,#18
-db #18,#81,#81,#88,#88,#18,#81,#88,#18,#18,#81,#81,#88,#18
-db #11,#18,#88,#11,#18,#18,#88,#11,#18,#81,#18,#88,#18,#81
+fntdatbeg
 
-bmpfntwys0  db 2
-bmpfntwys   db 20,40,06:dw $+7:dw $+4,20*06:db 5
-db #11,#88,#11,#81,#18,#81,#18,#81,#11,#18,#18,#81,#88,#81,#81,#88,#81,#88,#11,#18
-db #11,#88,#11,#88,#11,#11,#88,#11,#88,#88,#88,#81,#88,#81,#88,#18,#18,#81,#88,#88
-db #11,#88,#11,#88,#81,#18,#88,#81,#11,#88,#18,#81,#88,#81,#88,#81,#88,#81,#81,#18
-db #11,#11,#11,#88,#81,#18,#88,#88,#81,#18,#18,#18,#18,#18,#88,#18,#88,#18,#81,#88
-db #11,#11,#11,#88,#81,#18,#88,#11,#81,#18,#18,#11,#81,#18,#88,#18,#88,#18,#81,#88
-db #11,#88,#11,#88,#81,#18,#88,#81,#11,#88,#18,#18,#88,#18,#88,#18,#88,#81,#18,#88
+fntdatids   ds 8        ;header ID
+fntdatsiz   dw 0        ;length index and thumbnails
+fntdatnum   db 0        ;number of fonts in this collection
+fntdatflg   db 0        ;flags (+1=fonts compressed)
+fntdatres   ds 4        ;*res*
 
-bmpfntbld0  db 2
-bmpfntbld   db 12,24,06:dw $+7:dw $+4,12*06:db 5
-db #11,#11,#88,#88,#88,#88,#11,#88,#88,#81,#18,#88
-db #11,#81,#18,#88,#88,#88,#11,#88,#88,#81,#18,#88
-db #11,#11,#88,#81,#11,#88,#11,#88,#81,#11,#18,#88
-db #11,#81,#18,#11,#81,#18,#11,#88,#11,#81,#18,#88
-db #11,#81,#18,#11,#81,#18,#11,#88,#11,#81,#18,#88
-db #11,#11,#88,#81,#11,#88,#81,#18,#81,#11,#18,#88
-
-bmpfntita0  db 2
-bmpfntita   db 12,24,06:dw $+7:dw $+4,12*06:db 5
-db #81,#88,#18,#88,#88,#88,#88,#18,#81,#88,#88,#88
-db #81,#88,#18,#88,#88,#88,#88,#18,#88,#88,#88,#88
-db #81,#88,#11,#88,#81,#11,#88,#18,#81,#88,#81,#11
-db #18,#81,#88,#81,#18,#18,#81,#88,#18,#81,#18,#88
-db #18,#81,#88,#81,#88,#18,#81,#88,#18,#81,#88,#88
-db #18,#88,#18,#88,#11,#18,#88,#18,#18,#88,#11,#18
-
-bmpfntbig0  db 0
-bmpfntbig   db 10,20,10:dw $+7:dw $+4,10*10:db 5
-db #11,#11,#11,#88,#88,#88,#88,#88,#88,#88
-db #11,#88,#81,#18,#11,#88,#88,#88,#88,#88
-db #11,#88,#81,#18,#88,#88,#88,#88,#88,#88
-db #11,#88,#81,#18,#11,#88,#11,#11,#88,#88
-db #11,#11,#11,#88,#11,#81,#18,#81,#18,#88
-db #11,#88,#81,#18,#11,#81,#18,#81,#18,#88
-db #11,#88,#81,#18,#11,#81,#18,#81,#18,#88
-db #11,#88,#81,#18,#11,#88,#11,#11,#18,#88
-db #11,#11,#11,#88,#11,#88,#88,#81,#18,#88
-db #88,#88,#88,#88,#88,#81,#11,#11,#88,#88
-
-bmpfntmic0  db 2
-bmpfntmic   db 10,20,05:dw $+7:dw $+4,10*05:db 5
-db #18,#18,#81,#88,#88,#88,#88,#88,#88,#88
-db #11,#18,#88,#88,#81,#18,#18,#18,#81,#88
-db #18,#18,#81,#88,#18,#88,#11,#88,#18,#18
-db #18,#18,#81,#88,#18,#88,#18,#88,#18,#18
-db #18,#18,#81,#88,#81,#18,#18,#88,#81,#88
-
-bmpfntmsd0  db 1
-bmpfntmsd   db 24,48,07:dw $+7:dw $+4,24*07:db 5
-db #11,#88,#81,#18,#88,#11,#11,#88,#88,#88,#88,#88,#11,#11,#18,#88,#81,#11,#11,#88,#88,#11,#11,#88
-db #11,#18,#11,#18,#81,#18,#81,#18,#88,#88,#88,#88,#81,#18,#11,#88,#11,#88,#81,#18,#81,#18,#81,#18
-db #11,#11,#11,#18,#88,#11,#88,#88,#88,#88,#88,#88,#81,#18,#81,#18,#11,#88,#81,#18,#88,#11,#88,#88
-db #11,#11,#11,#18,#88,#81,#18,#88,#81,#11,#11,#18,#81,#18,#81,#18,#11,#88,#81,#18,#88,#81,#18,#88
-db #11,#81,#81,#18,#88,#88,#11,#88,#88,#88,#88,#88,#81,#18,#81,#18,#11,#88,#81,#18,#88,#88,#11,#88
-db #11,#88,#81,#18,#81,#18,#81,#18,#88,#88,#88,#88,#81,#18,#11,#88,#11,#88,#81,#18,#81,#18,#81,#18
-db #11,#88,#81,#18,#88,#11,#11,#88,#88,#88,#88,#88,#11,#11,#18,#88,#81,#11,#11,#88,#88,#11,#11,#88
-
-bmpfntari0  db 1
-bmpfntari   db 16,32,07:dw $+7:dw $+4,16*07:db 5
-db #88,#81,#88,#88,#88,#18,#88,#88,#81,#88,#88,#88,#18,#88,#81,#88
-db #88,#18,#18,#88,#88,#88,#88,#88,#81,#88,#88,#81,#18,#88,#11,#88
-db #88,#18,#18,#81,#11,#18,#11,#11,#81,#88,#88,#88,#18,#88,#81,#88
-db #81,#88,#81,#81,#88,#18,#88,#81,#81,#88,#88,#88,#18,#88,#81,#88
-db #81,#11,#11,#81,#88,#18,#81,#11,#81,#88,#88,#88,#18,#88,#81,#88
-db #81,#88,#81,#81,#88,#18,#18,#81,#81,#88,#88,#88,#18,#88,#81,#88
-db #18,#88,#88,#11,#88,#18,#11,#11,#81,#88,#88,#88,#18,#88,#81,#88
-
-bmpfntcou0  db 2
-bmpfntcou   db 18,36,06:dw $+7:dw $+4,18*06:db 5
-db #11,#18,#88,#88,#88,#88,#88,#88,#88,#88,#81,#88,#88,#88,#88,#88,#88,#88
-db #18,#18,#88,#88,#88,#88,#88,#88,#88,#88,#88,#88,#88,#88,#88,#88,#88,#88
-db #18,#88,#88,#11,#81,#18,#11,#81,#11,#18,#11,#88,#81,#11,#88,#11,#11,#88
-db #18,#88,#81,#88,#18,#18,#81,#88,#18,#88,#81,#88,#81,#11,#88,#81,#88,#88
-db #18,#88,#81,#88,#18,#18,#81,#88,#18,#88,#81,#88,#81,#88,#88,#81,#88,#88
-db #81,#18,#88,#11,#88,#81,#11,#81,#11,#88,#11,#18,#88,#11,#88,#11,#18,#88
-
-bmpfntede0  db 0
-bmpfntede   db 16,32,09:dw $+7:dw $+4,16*09:db 5
-db #11,#11,#88,#88,#18,#88,#88,#88,#88,#88,#88,#88,#88,#88,#18,#81
-db #81,#88,#88,#88,#18,#88,#88,#88,#88,#88,#88,#88,#88,#88,#18,#81
-db #81,#88,#88,#88,#18,#88,#88,#88,#88,#18,#88,#88,#88,#88,#18,#81
-db #81,#88,#88,#11,#18,#88,#11,#11,#88,#11,#11,#88,#88,#88,#18,#81
-db #81,#11,#81,#88,#18,#88,#18,#81,#88,#18,#81,#88,#88,#88,#18,#81
-db #81,#88,#81,#88,#18,#88,#11,#11,#88,#18,#81,#88,#88,#88,#18,#81
-db #81,#88,#81,#88,#18,#88,#18,#88,#88,#18,#81,#88,#88,#88,#18,#81
-db #81,#88,#81,#88,#18,#88,#18,#88,#88,#18,#81,#88,#88,#88,#18,#81
-db #81,#11,#88,#11,#11,#88,#11,#11,#88,#18,#81,#88,#88,#88,#18,#81
-
-bmpfnttim0  db 1
-bmpfnttim   db 18,36,07:dw $+7:dw $+4,18*07:db 5
-db #11,#11,#18,#18,#88,#88,#88,#88,#88,#88,#88,#88,#88,#11,#88,#81,#18,#88
-db #18,#18,#18,#88,#88,#88,#88,#88,#88,#88,#88,#88,#88,#81,#88,#18,#81,#88
-db #88,#18,#81,#18,#11,#11,#18,#88,#18,#88,#11,#88,#88,#81,#88,#88,#81,#88
-db #88,#18,#88,#18,#81,#81,#81,#81,#81,#81,#88,#88,#88,#81,#88,#88,#81,#88
-db #88,#18,#88,#18,#81,#81,#81,#81,#11,#81,#18,#88,#88,#81,#88,#88,#18,#88
-db #88,#18,#88,#18,#81,#81,#81,#81,#88,#88,#81,#88,#88,#81,#88,#81,#81,#88
-db #81,#11,#81,#11,#11,#11,#11,#18,#11,#81,#18,#88,#88,#11,#18,#11,#11,#88
+fntdatinf   ds 2048     ;font data, names, tumbnails
 
 
 ;==============================================================================
@@ -2453,7 +3305,7 @@ db #81,#11,#81,#11,#11,#11,#11,#18,#11,#81,#18,#88,#88,#11,#18,#11,#11,#88
 ;==============================================================================
 
 texts_int
-read"App-Wordpad-texts.asm"
+read"App-Wordpad-i18n.asm"
 texts_int_end
 
 list
@@ -2461,7 +3313,14 @@ texts_int_len   equ texts_int_end-texts_int
 nolist
 
 
+fntsysysz   db 8        ;always 8
+fntsystyp   db 0        ;system font writing style (0=96 char simple ascii, 2-31=255 char international)
+
+
 ;### STRINGS ##################################################################
+
+fntmsk  db "FNT",0
+fntpth  ds 256
 
 docmsk  db "TXT",0
 docpth  ds 256
@@ -2482,10 +3341,6 @@ fnddattfn   ds 33
 fnddattrp   ds 33
 gotdattln   db "1":ds 4
 gotdattcl   db "1":ds 5
-
-fndmsgtxt2a db "Replaced "
-fndmsgtxt2b ds 8+5
-fndmsgtxt2c db " times.",0
 
 ;### CONFIG ###################################################################
 
@@ -2552,9 +3407,14 @@ prgwinmen3tx2 db 6,128,-1:dw menicn_settings+1:     db 7:dw prgwinmen3tx2_poi:db
 ;     _wordwrap
 menicn_settings     db 4,8,7:dw $+7,$+4,28:db 5: db #66,#6c,#66,#66, #6c,#6c,#6c,#66, #6f,#cd,#cf,#66, #cc,#c1,#cc,#c6, #ff,#cc,#cf,#f6, #6c,#fc,#fc,#66, #6f,#6c,#6f,#66
 
-prgwinmen4tx1 db 6,128,-1:dw menicn_null+1:         db 7:dw prgwinmen4tx1_poi:db 0
+prgwinmen4tx1 db 6,128,-1:dw menicn_vwtool+1:       db 7:dw prgwinmen4tx1_poi:db 0
+prgwinmen4tx2 db 6,128,-1:dw menicn_vwstatus+1:     db 7:dw prgwinmen4tx2_poi:db 0
+prgwinmen4tx3 db 6,128,-1:dw menicn_linenumbers+1:  db 7:dw prgwinmen4tx3_poi:db 0
 
-;     _viewstatus
+menicn_vwtool       db 4,8,7:dw $+7,$+4,28:db 5: db #61,#11,#11,#16, #17,#77,#76,#71, #13,#22,#33,#31, #13,#22,#33,#31, #18,#88,#88,#81, #18,#88,#88,#81, #18,#88,#88,#81
+menicn_vwstatus     db 4,8,7:dw $+7,$+4,28:db 5: db #18,#88,#88,#81, #18,#88,#88,#81, #18,#88,#88,#81, #18,#88,#88,#81, #13,#32,#32,#31, #13,#32,#32,#31, #61,#11,#11,#16
+menicn_linenumbers  db 4,8,7:dw $+7,$+4,28:db 5: db #77,#61,#11,#11, #66,#66,#66,#66, #77,#61,#11,#11, #66,#66,#66,#66, #77,#61,#11,#11, #66,#66,#66,#66, #77,#61,#11,#11
+
 prgwinmen5tx1 db 6,128,-1:dw menicn_help+1:         db 7:dw prgwinmen5tx1_poi:db 0
 prgwinmen5tx2 db 6,128,-1:dw menicn_about+1:        db 7:dw prgwinmen5tx2_poi:db 0
 
@@ -2565,13 +3425,14 @@ menicn_about        db 4,8,7:dw $+7,$+4,28:db 5: db #66,#10,#07,#66, #66,#10,#07
 
 prgtxtinf  dw prgtxtinf1,4*1+2,prgtxtinf2,4*1+2,prgtxtinf3,4*1+2,0,prgicnbig,prgicn16c
 
-prgtxterr1  dw prgtxterra,4*1+2,prgtxterrb,4*1+2,prgtxtinf0,4*1+2
-prgtxterr2  dw prgtxterrc,4*1+2,prgtxtinf0,4*1+2,prgtxtinf0,4*1+2
-prgtxterr3  dw prgtxterrd,4*1+2,prgtxtinf0,4*1+2,prgtxtinf0,4*1+2
-prgtxterr4  dw prgtxterre,4*1+2,prgtxterrf,4*1+2,prgtxtinf0,4*1+2
+prgtxterr1  dw prgtxterra,4*1+2,prgtxterrb,4*1+2,prgtxtinf0,4*1+2   ;textbuffer full
+prgtxterr2  dw prgtxterrc,4*1+2,prgtxtinf0,4*1+2,prgtxtinf0,4*1+2   ;error while loading file
+prgtxterr3  dw prgtxterrd,4*1+2,prgtxtinf0,4*1+2,prgtxtinf0,4*1+2   ;error while saving file
+prgtxterr4  dw prgtxterre,4*1+2,prgtxterrf,4*1+2,prgtxtinf0,4*1+2   ;device full
 prgtxterr5  dw prgtxterrg,4*1+2,prgtxtinf0,4*1+2,prgtxtinf0,4*1+2   ;no printer daemon
+prgtxterr6  dw prgtxterrh,4*1+2,prgtxtinf0,4*1+2,prgtxtinf0,4*1+2   ;error while loading font
 
-prgtxtsav   dw prgtxtsav1,4*1+2,prgtxtinf0,4*1+2,prgtxtinf0,4*1+2
+prgtxtsav   dw prgtxtsav1,4*1+2,prgtxtinf0,4*1+2,prgtxtinf0,4*1+2   ;save changes?
 
 prgtxtfnd   dw fndmsgtxt1,4*1+2,prgtxtinf0,4*1+2,prgtxtinf0,4*1+2
 prgtxtrep   dw fndmsgtxt2a,4*1+2,prgtxtinf0,4*1+2,prgtxtinf0,4*1+2,prgicnbig
@@ -2591,35 +3452,64 @@ txtprt1     db "Printing...",0
 ;### CONFIG WINDOW ############################################################
 
 cfgwindat   dw #1401,4+16,079,024,160,138,0,0,160,138,160,138,160,138,0,cfgwintit,0,0,cfgwingrp,0,0:ds 136+14
-cfgwingrp   db 20,0:dw cfgwinobj,0,0,256*20+19,0,0,0
-cfgwinobj
+cfgwingrp   db cfgwinobja_cnt,0:dw cfgwinobja,0,0,256*20+19,0,0,0
+
+ctrcfgtab   db 2,2+4+48+64
+ctrcfgtab0  db 0:dw txtcfgfnt:db -1:dw txtcfgopt:db -1
+
+cfgwinobja_cnt  equ 16
+cfgwinobja
 dw     00,         0,2,          0,0,1000,1000,0        ;00=Hintergrund
-dw     00,255*256+ 3,cfgwindsc0, 00, 01, 80,59,0        ;01=Frame       "Font type"
-dw     00,255*256+41,fntselobj,  08, 10, 64,42,0        ;02=Font-List
-dw     00,255*256+ 3,cfgwindsc1, 80, 01, 80,59,0        ;03=Frame       "Font colour"
-dw     00,255*256+ 1,cfgwindsc6, 88, 12, 32, 8,0        ;04=Description "Pen"
-dw cfgcol,255*256+42,penselobj, 120, 11, 32,10,0        ;05=Pen-List
-dw     00,255*256+ 1,cfgwindsc7, 88, 24, 32, 8,0        ;06=Description "Paper"
-dw cfgcol,255*256+42,papselobj, 120, 23, 32,10,0        ;07=Paper-List
-dw     00,255*256+ 1,cfgwindsc8, 92, 40, 56, 8,0        ;08=Description "Preview"
-dw     00,255*256+ 3,cfgwindsc2, 00, 60,160,63,0        ;09=Frame       "Options"
-dw     00,255*256+18,cfgwinrad0, 08, 70,120, 8,0        ;10=Radiobox    "Word wrap at window border"
-dw     00,255*256+18,cfgwinrad1, 08, 81, 64, 8,0        ;11=Radiobox    "Word wrap at"
-dw     00,255*256+32,cfgwininp1, 73, 79, 26,12,0        ;12=Input       "Word wrap at"
-dw     00,255*256+ 1,cfgwindsc4,101, 81, 32, 8,0        ;13=Description "px"
-dw     00,255*256+18,cfgwinrad2, 08, 92, 64, 8,0        ;14=Radiobox    "No word wrap"
-dw     00,255*256+ 1,cfgwindsc3, 08,106, 32, 8,0        ;15=Description "Tab stop width"
-dw     00,255*256+32,cfgwininp2, 73,104, 16,12,0        ;16=Input       "Tab stop width"
-dw     00,255*256+ 1,cfgwindsc5, 91,106, 32, 8,0        ;17=Description "chars"
-dw cfgoky,255*256+16,prgtxtoky,  59,123, 48,12,0        ;18="Ok"    -Button
-dw diacnc,255*256+16,prgtxtcnc, 109,123, 48,12,0        ;19="Cancel"-Button
+dw cfgtab,255*256+20,ctrcfgtab,  00, 02,160,11,0        ;01=Tabs
+dw       0,255*256+00,128+1     ,00,119,999, 1,0        ;02=bottom line
+dw cfgoky,255*256+16,prgtxtoky,  59,123, 48,12,0        ;03="Ok"    -Button
+dw cfgcnc,255*256+16,prgtxtcnc, 109,123, 48,12,0        ;04="Cancel"-Button
+
+dw     00,255*256+ 3,cfgwindsc0, 00, 18,160,60,0        ;05=Frame       "Font type"
+cfgwinobja_fntlst equ 6
+dw     00,255*256+41,fntselobj,  08, 28, 88,42,0        ;06=Font-List
+dw     00,255*256+1,cfgwindsc10,104, 27, 48, 8,0        ;07=Description "Load from"
+dw     00,255*256+1,cfgwindsc11,104, 37, 48, 8,0        ;08=Description "Fontfile"
+dw cfgfbr,255*256+16,prgtxtbrw, 104, 49, 48,12,0        ;09="Browse"-Button
+
+dw     00,255*256+ 3,cfgwindsc1, 00, 79,160,39,0        ;10=Frame       "Font colour"
+dw     00,255*256+ 1,cfgwindsc6, 08, 90, 32, 8,0        ;11=Description "Pen"
+dw cfgcol,255*256+42,penselobj,  50, 89, 32,10,0        ;12=Pen-List
+dw     00,255*256+ 1,cfgwindsc7, 08,102, 32, 8,0        ;13=Description "Paper"
+dw cfgcol,255*256+42,papselobj,  50,101, 32,10,0        ;14=Paper-List
+cfgwinobja_prv   equ 15
+dw     00,255*256+ 1,cfgwindsc8, 92, 90, 56, 8,0        ;15=Description "Preview"
 
 
-fntselobj   dw 8,0,fntsellst,0,1,fntselrow,0,1
-fntselrow   dw 0,56,0,0
-fntsellst   dw 00,fnttxtdef
-            dw 01,fnttxtdef, 02,fnttxtdef, 03,fnttxtdef, 04,fnttxtdef, 05,fnttxtdef, 06,fnttxtdef, 07,fnttxtdef, 08,fnttxtdef
-            dw 09,fnttxtdef, 10,fnttxtdef, 11,fnttxtdef, 12,fnttxtdef, 13,fnttxtdef, 14,fnttxtdef, 15,fnttxtdef, 16,fnttxtdef
+cfgwinobjb_cnt  equ 15
+cfgwinobjb
+dw     00,         0,2,          0,0,1000,1000,0        ;00=Hintergrund
+dw cfgtab,255*256+20,ctrcfgtab,  00, 02,160,11,0        ;01=Tabs
+dw       0,255*256+00,128+1     ,00,119,999, 1,0        ;02=bottom line
+dw cfgoky,255*256+16,prgtxtoky,  59,123, 48,12,0        ;03="Ok"    -Button
+dw diacnc,255*256+16,prgtxtcnc, 109,123, 48,12,0        ;04="Cancel"-Button
+
+dw     00,255*256+ 3,cfgwindsc2, 00, 18,160,48,0        ;05=Frame       "Word wrap"
+dw     00,255*256+18,cfgwinrad0, 08, 28,120, 8,0        ;06=Radiobox    "Word wrap at window border"
+dw     00,255*256+18,cfgwinrad1, 08, 39, 64, 8,0        ;07=Radiobox    "Word wrap at"
+dw     00,255*256+32,cfgwininp1, 73, 37, 26,12,0        ;08=Input       "Word wrap at"
+dw     00,255*256+ 1,cfgwindsc4,101, 39, 32, 8,0        ;09=Description "px"
+dw     00,255*256+18,cfgwinrad2, 08, 50, 64, 8,0        ;10=Radiobox    "No word wrap"
+
+dw     00,255*256+ 3,cfgwindsc12,00, 67,160,29,0        ;11=Frame       "Miscellaneous"
+
+dw     00,255*256+ 1,cfgwindsc3, 08, 79, 32, 8,0        ;12=Description "Tab stop width"
+dw     00,255*256+32,cfgwininp2, 73, 77, 16,12,0        ;13=Input       "Tab stop width"
+dw     00,255*256+ 1,cfgwindsc5, 91, 79, 32, 8,0        ;14=Description "chars"
+
+
+fntselobj   dw 8,0,fntsellst,0,2,fntselrow,0,1
+fntselrow   dw 0,66,0,0
+            dw 1,12,0,0
+fntsellst   dw 00,fnttxtdef,fnttxtpx00
+            dw 01,fnttxtdef,fnttxtpx01, 02,fnttxtdef,fnttxtpx02, 03,fnttxtdef,fnttxtpx03, 04,fnttxtdef,fnttxtpx04, 05,fnttxtdef,fnttxtpx05, 06,fnttxtdef,fnttxtpx06, 07,fnttxtdef,fnttxtpx07, 08,fnttxtdef,fnttxtpx08
+            dw 09,fnttxtdef,fnttxtpx09, 10,fnttxtdef,fnttxtpx10, 11,fnttxtdef,fnttxtpx11, 12,fnttxtdef,fnttxtpx12, 13,fnttxtdef,fnttxtpx13, 14,fnttxtdef,fnttxtpx14, 15,fnttxtdef,fnttxtpx15, 16,fnttxtdef,fnttxtpx16
+            dw 00,fnttxtdef,fnttxtpx17
 
 penselobj   dw 16,0,pensellst,0,1,penselrow,0,1
 penselrow   dw 0,56,0,0
@@ -2634,12 +3524,15 @@ papsellst   dw 00,coltxt00, 01,coltxt01, 02,coltxt02, 03,coltxt03, 04,coltxt04, 
 cfgwindsc0  dw cfgwintxt0,2+4
 cfgwindsc1  dw cfgwintxt1,2+4
 cfgwindsc2  dw cfgwintxt2,2+4
+cfgwindsc12 dw cfgwintxt12,2+4
 cfgwindsc3  dw cfgwintxt7,2+4
 cfgwindsc4  dw cfgwintxt5,2+4
 cfgwindsc5  dw cfgwintxt8,2+4
 cfgwindsc6  dw cfgwintxt9,2+4
 cfgwindsc7  dw cfgwintxta,2+4
 cfgwindsc8  dw cfgwintxtb,256*194+16
+cfgwindsc10 dw cfgwintxt10,2+4
+cfgwindsc11 dw cfgwintxt11,2+4
 
 cfgwininp1  dw cfgwinbuf1,0,0,0,0,4,0
 cfgwinbuf1  ds 5
@@ -2652,32 +3545,33 @@ cfgwinrad0  dw cfgwinwrp,cfgwintxt3,256*0+2+4,cfgwinradb
 cfgwinrad1  dw cfgwinwrp,cfgwintxt4,256*1+2+4,cfgwinradb
 cfgwinrad2  dw cfgwinwrp,cfgwintxt6,256*2+2+4,cfgwinradb
 
-cfgdat
+
+
+cfgdatbeg
+
 cfgdatpap   db 0    ;paper
 cfgdatpen   db 1    ;pen
-cfgdatfnt   db 0    ;font 
+cfgdatfnt   db 0    ;font (0=default, -1=extern, 1-x=from collection)
 cfgdatwrp   db 0    ;0=autowordwrap, 1=wordwrap at position x, 2=no wordwrap
 cfgdatwps   dw 200  ;wordwrap-position (pixels)
 cfgdattab   db 8    ;tabstop-position (chars)
-cfgdatsta   db 1    ;flag, if statusbar
-            ds 16-8
+cfgdatviw   db 3    ;view flags (+1=statusbar, +2=toolbar, +4=line numbers)
+cfgdatfpt   ds 256  ;external font path
 
-cfgfntnum   db 0        ;number of fonts
-cfgfntdat   ds 254-16   ;font information (number/offset table, names)
-cfgfntcpr   db 0        ;flag, if fonts compressed
+cfgdatend
 
 ;### GOTO #####################################################################
 
-gotwindat   dw #1401,4+16,090,060,120,34,0,0,120,34,120,34,120,34,0,gotwintit,0,0,gotwingrp,0,0:ds 136+14
+gotwindat   dw #1401,4+16,090,060,132,34,0,0,132,34,132,34,132,34,0,gotwintit,0,0,gotwingrp,0,0:ds 136+14
 gotwingrp   db 07,0:dw gotwinobj,0,0,256*07+06,0,0,3
 gotwinobj
 dw     00,         0,2,          0,0,1000,1000,0        ;00=Hintergrund
-dw     00,255*256+ 1,gotwindsc1, 04, 06, 34, 8,0        ;01=Description "Line"
-dw     00,255*256+32,gotdatoln,  38, 04, 32,12,0        ;02=Input       "Line"
-dw     00,255*256+ 1,gotwindsc2, 04, 20, 34, 8,0        ;03=Description "Column"
-dw     00,255*256+32,gotdatocl,  38, 18, 32,12,0        ;04=Input       "Column"
-dw fndgot,255*256+16,prgtxtoky,  76, 04, 40,12,0        ;05="Ok"        -Button
-dw diacnc,255*256+16,prgtxtcnc,  76, 18, 40,12,0        ;06="Cancel"    -Button
+dw     00,255*256+ 1,gotwindsc1, 04, 06, 38, 8,0        ;01=Description "Line"
+dw     00,255*256+32,gotdatoln,  42, 04, 32,12,0        ;02=Input       "Line"
+dw     00,255*256+ 1,gotwindsc2, 04, 20, 38, 8,0        ;03=Description "Column"
+dw     00,255*256+32,gotdatocl,  42, 18, 32,12,0        ;04=Input       "Column"
+dw fndgot,255*256+16,prgtxtoky,  80, 04, 48,12,0        ;05="Ok"        -Button
+dw diacnc,255*256+16,prgtxtcnc,  80, 18, 48,12,0        ;06="Cancel"    -Button
 
 gotwindsc1  dw fndwintxt6,2+4
 gotwindsc2  dw fndwintxt7,2+4
@@ -2736,34 +3630,119 @@ fnddatall   db 0    ;flag, if entire document
 
 ;### FONT DROPDOWN ############################################################
 
-fntwindat dw #0001,4+8+16, 33, 20,58,90,0,0,1000,1000,1,1,1000,1000,0,0,0,0,fntwingrp,0,0:ds 136+14
+fntwindat dw #0001,4+8+16, 33, 20,78,90,0,0,1000,1000,1,1,1000,1000,0,0,0,0,fntwingrp,0,0:ds 136+14
 
 fntwingrp   db 1,0:dw fntwinrec,0,0,00*256+00,0,0,00
 fntwinrec
-dw     00,255*256+25,fntcolctr,00,00,58,90,0           ;00=control collection
+dw     00,255*256+25,fntcolctr,00,00,78,90,0            ;00=control collection
 
-fntcolctr   dw fntcolgrp,58,110,0,0,2
+fntcolctr   dw fntcolgrp,78,110,0,0,2
 
-fntcolgrp   db fntcfgnum+2,0:dw fntcolrec,0,0,00*256+00,0,0,00
+fntcolgrp   db 38,0:dw fntcolrec,0,0,00*256+00,0,0,00
 fntcolrec
-dw     00,255*256+00,128+8     ,0,0,10000,10000,0       ;00=Background
-dw     01,255*256+10,0         ,001, 0,16,14,0          ;01=font 00
-dw     02,255*256+10,0         ,001, 0,16,14,0          ;02=font 01
-dw     03,255*256+10,0         ,001, 0,16,14,0          ;03=font 02
-dw     04,255*256+10,0         ,001, 0,16,14,0          ;04=font 03
-dw     05,255*256+10,0         ,001, 0,16,14,0          ;05=font 04
-dw     06,255*256+10,0         ,001, 0,16,14,0          ;06=font 05
-dw     07,255*256+10,0         ,001, 0,16,14,0          ;07=font 06
-dw     08,255*256+10,0         ,001, 0,16,14,0          ;08=font 07
-dw     09,255*256+10,0         ,001, 0,16,14,0          ;09=font 08
-dw     10,255*256+10,0         ,001, 0,16,14,0          ;10=font 09
-dw     11,255*256+10,0         ,001, 0,16,14,0          ;11=font 10
-dw    255,255*256+00,192+9     ,001, 0,48,10,0          ;12=marker
+dw     00,255*256+00,128+8      ,0,0,10000,10000,0      ;00=Background
+dw    254,255*256+ 5,fntobjpix00,001,  3,20,08,0        ;01=xx px
+dw    254,255*256+ 1,fntobjdef  ,021,  1,48,10,0        ;02=font 00 (default)
+dw     01,255*256+64,fntobjpix01,001, 13,20,08,0        ;03=xx px
+dw     01,255*256+64,0          ,021,  0,48,10,0        ;04=font 01
+dw     02,255*256+64,fntobjpix02,001, 23,20,08,0        ;05=xx px
+dw     02,255*256+64,0          ,021,  0,48,10,0        ;06=font 02
+dw     03,255*256+64,fntobjpix03,001, 33,20,08,0        ;07=xx px
+dw     03,255*256+64,0          ,021,  0,48,10,0        ;08=font 03
+dw     04,255*256+64,fntobjpix04,001, 43,20,08,0        ;09=xx px
+dw     04,255*256+64,0          ,021,  0,48,10,0        ;10=font 04
+dw     05,255*256+64,fntobjpix05,001, 53,20,08,0        ;11=xx px
+dw     05,255*256+64,0          ,021,  0,48,10,0        ;12=font 05
+dw     06,255*256+64,fntobjpix06,001, 63,20,08,0        ;13=xx px
+dw     06,255*256+64,0          ,021,  0,48,10,0        ;14=font 06
+dw     07,255*256+64,fntobjpix07,001, 73,20,08,0        ;15=xx px
+dw     07,255*256+64,0          ,021,  0,48,10,0        ;16=font 07
+dw     08,255*256+64,fntobjpix08,001, 83,20,08,0        ;17=xx px
+dw     08,255*256+64,0          ,021,  0,48,10,0        ;18=font 08
+dw     09,255*256+64,fntobjpix09,001, 93,20,08,0        ;19=xx px
+dw     09,255*256+64,0          ,021,  0,48,10,0        ;20=font 09
+dw     10,255*256+64,fntobjpix10,001,103,20,08,0        ;21=xx px
+dw     10,255*256+64,0          ,021,  0,48,10,0        ;22=font 10
+dw     11,255*256+64,fntobjpix11,001,113,20,08,0        ;23=xx px
+dw     11,255*256+64,0          ,021,  0,48,10,0        ;24=font 11
+dw     12,255*256+64,fntobjpix12,001,123,20,08,0        ;25=xx px
+dw     12,255*256+64,0          ,021,  0,48,10,0        ;26=font 12
+dw     13,255*256+64,fntobjpix13,001,133,20,08,0        ;27=xx px
+dw     13,255*256+64,0          ,021,  0,48,10,0        ;28=font 13
+dw     14,255*256+64,fntobjpix14,001,143,20,08,0        ;29=xx px
+dw     14,255*256+64,0          ,021,  0,48,10,0        ;30=font 14
+dw     15,255*256+64,fntobjpix15,001,153,20,08,0        ;31=xx px
+dw     15,255*256+64,0          ,021,  0,48,10,0        ;32=font 15
+dw     16,255*256+64,fntobjpix16,001,163,20,08,0        ;33=xx px
+dw     16,255*256+64,0          ,021,  0,48,10,0        ;34=font 16
+fntcolrec1
+dw    253,255*256+ 5,fntobjpix17,001,173,20,08,0        ;35=xx px
+dw    253,255*256+ 1,fntobjext  ,021,  0,48,10,0        ;36=font 17 (extern)
+dw    255,255*256+00,192+9      ,001,  0,68,10,0        ;37=marker
 
+fntobjdef   dw fnttxtdef,0+4
+fntobjext   dw fnttxtext,0+4
+
+fntobjpix00 dw fnttxtpix00,0+4,fntpix:fnttxtpix00 db "8:",0 :fnttxtpx00 db "8",0
+fntobjpix01 dw fnttxtpix01,0+4,fntpix:fnttxtpix01 db "00:",0:fnttxtpx01 db "00",0
+fntobjpix02 dw fnttxtpix02,0+4,fntpix:fnttxtpix02 db "00:",0:fnttxtpx02 db "00",0
+fntobjpix03 dw fnttxtpix03,0+4,fntpix:fnttxtpix03 db "00:",0:fnttxtpx03 db "00",0
+fntobjpix04 dw fnttxtpix04,0+4,fntpix:fnttxtpix04 db "00:",0:fnttxtpx04 db "00",0
+fntobjpix05 dw fnttxtpix05,0+4,fntpix:fnttxtpix05 db "00:",0:fnttxtpx05 db "00",0
+fntobjpix06 dw fnttxtpix06,0+4,fntpix:fnttxtpix06 db "00:",0:fnttxtpx06 db "00",0
+fntobjpix07 dw fnttxtpix07,0+4,fntpix:fnttxtpix07 db "00:",0:fnttxtpx07 db "00",0
+fntobjpix08 dw fnttxtpix08,0+4,fntpix:fnttxtpix08 db "00:",0:fnttxtpx08 db "00",0
+fntobjpix09 dw fnttxtpix09,0+4,fntpix:fnttxtpix09 db "00:",0:fnttxtpx09 db "00",0
+fntobjpix10 dw fnttxtpix10,0+4,fntpix:fnttxtpix10 db "00:",0:fnttxtpx10 db "00",0
+fntobjpix11 dw fnttxtpix11,0+4,fntpix:fnttxtpix11 db "00:",0:fnttxtpx11 db "00",0
+fntobjpix12 dw fnttxtpix12,0+4,fntpix:fnttxtpix12 db "00:",0:fnttxtpx12 db "00",0
+fntobjpix13 dw fnttxtpix13,0+4,fntpix:fnttxtpix13 db "00:",0:fnttxtpx13 db "00",0
+fntobjpix14 dw fnttxtpix14,0+4,fntpix:fnttxtpix14 db "00:",0:fnttxtpx14 db "00",0
+fntobjpix15 dw fnttxtpix15,0+4,fntpix:fnttxtpix15 db "00:",0:fnttxtpx15 db "00",0
+fntobjpix16 dw fnttxtpix16,0+4,fntpix:fnttxtpix16 db "00:",0:fnttxtpx16 db "00",0
+fntobjpix17 dw fnttxtpix17,0+4,fntpix:fnttxtpix17 db "00:",0:fnttxtpx17 db "00",0
+
+fntobjpixbr dw fnttxtpixbr,0+4,fntpix:fnttxtpixbr db "00:",0
+
+
+fnttxtpx0   db "8",0,0
+fnttxtpxh   db "10",0
+
+fnttxtpx1   db "18",0
+fnttxtpx2   db "18",0
+fnttxtpx3   db "18",0
+fnttxtpx4   db "18",0
+fnttxtpx5   db "18",0
+fnttxtpx6   db "18",0
+fnttxtpx7   db "18",0
+fnttxtpx8   db "18",0
+fnttxtpx9   db "18",0
+fnttxtpxa   db "18",0
+fnttxtpxb   db "18",0
+fnttxtpxc   db "18",0
+fnttxtpxd   db "18",0
+fnttxtpxe   db "18",0
+fnttxtpxf   db "18",0
+fnttxtpxg   db "18",0
+
+
+fntpix
+db 32+6,48
+db 4,#40,#A0,#A0,#A0,#40,#00,#00,#00    ;0
+db 3,#40,#C0,#40,#40,#40,#00,#00,#00    ;1
+db 4,#C0,#20,#40,#80,#E0,#00,#00,#00    ;2
+db 4,#C0,#20,#40,#20,#C0,#00,#00,#00    ;3
+db 4,#80,#A0,#E0,#20,#20,#00,#00,#00    ;4
+db 4,#E0,#80,#C0,#20,#C0,#00,#00,#00    ;5
+db 4,#60,#80,#C0,#A0,#40,#00,#00,#00    ;6
+db 4,#E0,#20,#40,#40,#40,#00,#00,#00    ;7
+db 4,#40,#A0,#40,#A0,#40,#00,#00,#00    ;8
+db 4,#40,#A0,#60,#20,#C0,#00,#00,#00    ;9
+db 7,#00,#00,#d4,#a8,#d4,#80,#00,#00    ;px
 
 ;### MAIN WINDOW ##############################################################
 
-prgwindat dw #7f01,3,50,20,200,106,0,0,200,106,100,50,10000,10000,prgicnsml,prgwintit
+prgwindat dw #7f02,3,50,20,200,106,0,0,200,106,100,50,10000,10000,prgicnsml,prgwintit
 prgwindat0 dw prgwinsta,prgwinmen,prgwingrp,prgtolgrp,17:ds 136+14
 
 prgwinmen  dw  5, 1+4,prgwinmentx1,prgwinmen1,0, 1+4,prgwinmentx2,prgwinmen2,0, 1+4,prgwinmentx3,prgwinmen3,0, 1+4,prgwinmentx4,prgwinmen4,0, 1+4,prgwinmentx5,prgwinmen5,0
@@ -2771,10 +3750,11 @@ prgwinmen1 dw  8, 33,prgwinmen1tx1,filnew,0, 33,prgwinmen1tx2,filopn,0, 33,prgwi
 prgwinmen2 dw 12, 33,prgwinmen2tx1,edtcut,0, 33,prgwinmen2tx2,edtcop,0, 33,prgwinmen2tx3,edtpas,0, 33,prgwinmen2tx4,edtdel,0, 1+8,0,0,0, 33,prgwinmen2tx5,fndfnd,0
            dw     33,prgwinmen2tx6,fndfnx,0, 33,prgwinmen2tx7,fndrep,0, 33,prgwinmen2tx8,edtgot,0, 1+8,0,0,0, 33,prgwinmen2tx9,edtsal,0, 33,prgwinmen2txa,edttim,0
 prgwinmen3 dw  2, 33,prgwinmen3tx1,cfgwrp,0, 33,prgwinmen3tx2,cfgopn,0
-prgwinmen4 dw  1, 33,prgwinmen4tx1,cfgbar,0
+prgwinmen4 dw  4, 33,prgwinmen4tx1,cfgbart,0, 33,prgwinmen4tx2,cfgbars,0, 1+8,0,0,0, 33,prgwinmen4tx3,linswt,0
 prgwinmen5 dw  3, 33,prgwinmen5tx1,prghlp,0, 1+8,0,0,0, 33,prgwinmen5tx2,prginf,0
 
-prgtolgrp db 13,0:dw prgtolrec,0,0,256*0+0,0,0,2
+;toolbar
+prgtolgrp db 14,0:dw prgtolrec,0,0,256*0+0,0,0,2
 prgtolrec
 dw     00,255*256+0, 128+06,  0,0,10000,10000,0       ;00=Background1
 dw filnew,255*256+10,gfxtola,    1,  1, 16,14,0       ;01=Button "New"
@@ -2782,34 +3762,36 @@ dw filopn,255*256+10,gfxtolb,   17,  1, 16,14,0       ;02=Button "Open"
 dw filsav,255*256+10,gfxtolc,   33,  1, 16,14,0       ;03=Button "Save"
 dw filprt,255*256+10,gfxtold,   49,  1, 16,14,0       ;04=Button "Print"
 dw      0,255*256+0, 1,         67,  0,  1,16,0       ;05=seperator
-prgtolrec_fntdrp equ 5
+prgtolrec_fntdrp equ 6
+dw drpfnt,255*256+0, 128+8,     70,  2, 70,12,0       ;06=font dropdown frame
 prgtolrec_fntdrp_adr
-dw drpfnt,255*256+0, 128+8,     70,  2, 50,12,0       ;06=font dropdown frame
-dw drpfnt,255*256+10,bmpfntdef, 71,  5, 26, 6,0       ;07=font dropdown text
-dw drpfnt,255*256+10,arrdwngfx,120,  4,  8, 8,0       ;08=font dropdown arrow
+dw drpfnt,255*256+5,fntobjpixbr,71,  6, 16, 8,0       ;07=font dropdown px
+dw drpfnt,255*256+64,0        , 91,  5, 48, 6,0       ;08=font dropdown text
+dw drpfnt,255*256+10,arrdwngfx,140,  4,  8, 8,0       ;09=font dropdown arrow
 
-dw stybld,255*256+10,gfxtole,  130,  1, 16,14,0       ;09=Button "Bold"
-dw styita,255*256+10,gfxtolf,  146,  1, 16,14,0       ;10=Button "Italics"
-dw styuln,255*256+10,gfxtolg,  162,  1, 16,14,0       ;11=Button "Underlined"
+dw stybld,255*256+10,gfxtole,  150,  1, 16,14,0       ;10=Button "Bold"
+dw styita,255*256+10,gfxtolf,  166,  1, 16,14,0       ;11=Button "Italics"
+dw styuln,255*256+10,gfxtolg,  182,  1, 16,14,0       ;12=Button "Underlined"
 prgtolrec0
-dw stymrk,255*256+ 0,1+128+64, -16,  2, 13,12,0       ;12=marked formatting
+dw stymrk0,255*256+ 0,1+128+64, -16, 2, 13,12,0       ;13=marked formatting
 
-prgtolreci  equ 9   ;id  of first formatting button
+prgtolreci  equ 10  ;id  of first formatting button
 prgtolrecn  equ 3   ;num of formatting buttons
-prgtolrecp  equ 130 ;pos of first formatting button
+prgtolrecp  equ 150 ;pos of first formatting button
 
-
-prgwingrp db 2,0:dw prgwinobj,prgwinclc,0,256*0+0,0,0,2
+;content
+prgwingrp db 3,0:dw prgwinobj,prgwinclc,0,256*0+0,0,0,3
 prgwinobj
 dw     00,255*256+00,128+8     ,0,0,0,0,0   ;00=Background
-dw edtchg,255*256+33,txtmulobj ,0,0,0,0,0   ;01=Editor
+dw     00,255*256+64,0         ,0,0,0,0,0   ;01=Line numbers
+prgwinobj_edit  equ 2
+dw edtchg,255*256+33,txtmulobj ,0,0,0,0,0   ;02=Editor
 
 prgwinclc
-dw   0,      0,  0,  0,10000,      0,10000,    0    ;Background
-dw   1,      0,  1,  0,  -2,256*1+1, -2,256*1+1     ;Editor
-
-fntdrpobj   dw 8,0,fntsellst,0,1,fntselrow
-fntdrpobj0  dw 0,1  ;selected font
+dw   0,  0,0,0,10000,      0,10000,   0     ;Background
+prgwinclc1
+dw   0,  0,0,0,    15,     0, 0,256*1+1     ;Line numbers
+dw   1,  0,1,0,   -2,256*1+1,-2,256*1+1     ;Editor
 
 txtmulobj   dw txtbufmem    ;texdatadr       equ 0           ;Zeiger auf Text
             dw 0            ;texdatbeg       equ 2           ;erstes angezeigtes Zeichen (nur singleline)
@@ -2817,7 +3799,7 @@ txtmulobj   dw txtbufmem    ;texdatadr       equ 0           ;Zeiger auf Text
             dw 0            ;texdatmrk       equ 6           ;0/Anzahl markierter Zeichen [neg->Cursor=Ende Markierung]
             dw 0            ;texdatlen       equ 8           ;Textlänge
             dw txtbufmax    ;texdatmax       equ 10          ;maximal zulässige Textlänge (1-16383; exklusive 0-Terminator)
-            db 4            ;texdatflg       equ 12          ;Flags (Bit0=Paßwort [nur singleline], Bit1=ReadOnly, Bit2=AltColor, Bit3=AltFont [nur multiline], Bit4=keymapping, Bit7=Text has been modified)
+            db 4            ;texdatflg       equ 12          ;Flags (Bit0=Paßwort [nur singleline], Bit1=ReadOnly, Bit2=AltColor, Bit3=AltFont [nur multiline], Bit4=keymapping, Bit5=altfont is big font, Bit7=Text has been modified)
                             ;;** extended 16c/altfont
             db 0+16         ;texdatcol       equ 13          ;4bit txtpap, 4bit txtpen
             db 0            ;texdatrhm       equ 14          ;4bit rahmen1, 4bit rahmen2 (nur singleline)
@@ -2827,12 +3809,12 @@ txtmulobj   dw txtbufmem    ;texdatadr       equ 0           ;Zeiger auf Text
             dw 0            ;texdatlnt       equ 18          ;aktuelle Anzahl Zeilen
             dw -1           ;texdatxmx       equ 20          ;maximale Zeilenbreite in Pixeln bei Wordwrap-Pos-Vorgabe (-1=unbegrenzt)
             dw txtlinmax    ;texdatymx       equ 22          ;maximale Anzahl Zeilen (*2 bytes ab texdatlln!)
-            dw -8           ;texdatxwn       equ 24          ;win y len ohne slider für bisherige formatierung (winx<>aktx -> Neuformatierung notwendig, durch -8 erzwingen)
+            dw -8           ;texdatxwn       equ 24          ;win x len ohne slider für bisherige formatierung (winx<>aktx -> Neuformatierung notwendig, durch -8 erzwingen)
             dw 0            ;texdatywn       equ 26          ;win y len ohne slider
                             ;
             dw txtmulobj    ;texdatzgr       equ 28          ;pointer auf diesen datensatz
             dw 120          ;texdatxfl       equ 30          ;full x len (=Länge der längsten Textzeile in Pixel)
-            dw 80           ;texdatyfl       equ 32          ;full y len (=Anzahl aller Textzeilen * 8)
+            dw 80           ;texdatyfl       equ 32          ;full y len (=Anzahl aller Textzeilen * fontylen)
             dw 0            ;texdatxof       equ 34          ;offset x
             dw 0            ;texdatyof       equ 36          ;offset y
             db 1+2          ;texdatfg2       equ 38          ;Flags (Bit0=kein Auto-WordWrap [dann Xslider], Bit1=1)
